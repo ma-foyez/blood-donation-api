@@ -3,49 +3,64 @@ const res = require("express/lib/response");
 const Auth = require("../models/AuthModal");
 const { generateToken } = require("../config/generateToken");
 
+
 const registerUser = asyncHandler(async (req, res) => {
-    const { name, mobile, email, password, pic } = req.body;
+    const requestBody = req.body;
 
-    if (!name || !mobile || !password) {
-        res.status(400);
-        throw new Error("Please provide all required fields");
+    // Ensure required fields are provided
+    const requiredFields = ['name', 'mobile', 'dob', 'blood_group', 'is_weight_50kg', 'address', 'password'];
+    const missingFields = requiredFields.filter(field => !requestBody[field]);
+
+    if (missingFields.length > 0) {
+        res.status(400).json({
+            status: 400,
+            message: `Please provide all required fields: ${missingFields.join(', ')}`,
+        });
+        return;
     }
 
-    const userExits = await Auth.findOne({ mobile });
+    // Check if user already exists
+    const userExists = await Auth.findOne({ mobile: requestBody.mobile });
 
-    if (userExits) {
-        res.status(400);
-        throw new Error("You have already an account. Please try to login!");
+    if (userExists) {
+        res.status(400).json({
+            status: 400,
+            message: "You already have an account. Please try to login!",
+        });
+        return;
     }
 
-    const user = await Auth.create({
-        name,
-        mobile,
-        password,
-        pic,
-    });
+    // Create a new user with all the provided fields
+    const user = await Auth.create(requestBody);
 
     if (user) {
-
+        // Generate token, save it to user, and save the user
         const token = generateToken(user._id);
-        user.tokens.push({ token }); // Save the token to the user's tokens array
+        user.tokens.push({ token });
         await user.save();
 
         res.status(200).json({
             status: 200,
-            message: "You have been successfully create new account",
+            message: "You have been successfully created a new account",
             data: {
                 _id: user._id,
                 name: user.name,
-                email: user.mobile,
+                email: user.email,
+                dob: user.dob,
+                occupation: user.occupation,
+                blood_group: user.blood_group,
+                address: user.address,
+                is_weight_50kg: user.is_weight_50kg,
                 pic: user.pic,
-                access_token: token
-            }
-
+                access_token: token,
+            },
+           
         });
     } else {
-        res.status(400);
-        throw new Error("Failed to create new user");
+        res.status(400).json({
+            status: 400,
+            message: "Failed to create a new user",
+        });
     }
 });
 
@@ -66,10 +81,15 @@ const authUser = asyncHandler(async (req, res) => {
             data: {
                 _id: user._id,
                 name: user.name,
-                mobile: user.mobile,
+                email: user.email,
+                dob: user.dob,
+                occupation: user.occupation,
+                blood_group: user.blood_group,
+                address: user.address,
+                is_weight_50kg: user.is_weight_50kg,
                 pic: user.pic,
                 access_token: token,
-            }
+            },
         });
     } else {
         res.status(400);
