@@ -59,10 +59,10 @@ npm run start:dev
 ## Vercel Deployed API
 
 ```bash
-https://blood-donation.vercel.app/
+https://blood-donation-apis.vercel.app/
 ```
 ### with Version - 1.0.0
 
 ```bash
-https://blood-donation.vercel.app/api/v1
+https://blood-donation-apis.vercel.app/api/v1
 ```
