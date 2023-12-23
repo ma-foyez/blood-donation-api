@@ -18,6 +18,7 @@ const AuthSchema = mongoose.Schema(
         blood_group: { type: String, required: true },
         occupation: { type: String, default: "" },
         is_weight_50kg: { type: Boolean, required: true },
+        last_donation: { type: Date, default: Date.now, required: true },
         address: { type: AddressSchema, required: true },
         password: { type: String, required: true },
         pic: {

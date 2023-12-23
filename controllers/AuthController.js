@@ -20,12 +20,20 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     // Check if user already exists
-    const userExists = await Auth.findOne({ mobile: requestBody.mobile });
+    const userExistsWithNumber = await Auth.findOne({ mobile: requestBody.mobile });
+    const userExitsWithEmail = await Auth.findOne({ email: requestBody.email });
 
-    if (userExists) {
+    if (userExistsWithNumber) {
         res.status(400).json({
             status: 400,
-            message: "You already have an account. Please try to login!",
+            message: "You already have an account with this number.",
+        });
+        return;
+    }
+    if (userExitsWithEmail) {
+        res.status(400).json({
+            status: 400,
+            message: "You already have an account with this email.",
         });
         return;
     }
@@ -51,6 +59,7 @@ const registerUser = asyncHandler(async (req, res) => {
                 blood_group: user.blood_group,
                 address: user.address,
                 is_weight_50kg: user.is_weight_50kg,
+                last_donation: user.last_donation,
                 pic: user.pic,
                 access_token: token,
             },
@@ -87,6 +96,7 @@ const authUser = asyncHandler(async (req, res) => {
                 blood_group: user.blood_group,
                 address: user.address,
                 is_weight_50kg: user.is_weight_50kg,
+                last_donation: user.last_donation,
                 pic: user.pic,
                 access_token: token,
             },
