@@ -1,0 +1,31 @@
+{
+  "name": "M.A Foyez Portfolio",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "start:dev": "nodemon index.js"
+  },
+  "author": "Muhammad Abul Foyez",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ideskbd/mafoyez-portfolio-backend/issues"
+  },
+  "homepage": "https://github.com/ideskbd/mafoyez-portfolio-backend#readme",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "brcypt": "^1.0.1",
+    "colors": "^1.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.17.3",
+    "express-async-handler": "^1.2.0",
+    "framer-motion": "^6.2.8",
+    "jsonwebtoken": "^8.5.1",
+    "mongodb": "^5.5.0",
+    "mongoose": "^6.2.8",
+    "nodemon": "^2.0.15"
+  }
+}
