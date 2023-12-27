@@ -5,6 +5,7 @@ const colors = require("colors");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 var cors = require('cors');
 const AuthRouter = require("./routes/AuthRoute");
+const DivisionRoute = require("./routes/DivisionsRoute");
 
 
 dotenv.config();
@@ -21,6 +22,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/v1/auth', AuthRouter);
+app.use('/api/v1/division', DivisionRoute);
 
 app.use(notFound)
 app.use(errorHandler)
