@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const DivisionsSchema = mongoose.Schema(
     {
-        code: { type: String, required: true, unique: true  },
+        division_code: { type: String, required: true, unique: true  },
         name: { type: String, required: true},
         bn_name: { type: String, required: true},
         coordinates: { type: String, required: true},
@@ -16,6 +16,6 @@ const DivisionsSchema = mongoose.Schema(
 );
 
 
-const Divisions = mongoose.model("Divisions", DivisionsSchema);
+const DivisionModel = mongoose.model("DivisionModel", DivisionsSchema);
 
-module.exports = Divisions;
+module.exports = DivisionModel;
