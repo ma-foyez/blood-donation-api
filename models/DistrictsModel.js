@@ -2,8 +2,8 @@ const mongoose = require("mongoose");
 
 const DistrictSchema = mongoose.Schema(
     {
-        division_code: { type: String, required: true},
-        district_code: { type: String, required: true, unique: true  },
+        district_id: { type: String, required: true, unique: true  },
+        division_id: { type: String, required: true},
         name: { type: String, required: true},
         bn_name: { type: String, required: true},
         lat: { type: String, required: true},

@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const DivisionsSchema = mongoose.Schema(
     {
+        division_id: { type: String, required: true, unique: true  },
         division_code: { type: String, required: true, unique: true  },
         name: { type: String, required: true},
         bn_name: { type: String, required: true},

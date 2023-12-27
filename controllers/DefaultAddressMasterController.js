@@ -3,6 +3,10 @@ const DivisionModel = require("../models/DivisionsModel");
 const DistrictModel = require("../models/DistrictsModel");
 const { districtData } = require("../_utils/data/districtData");
 const { divisionData } = require("../_utils/data/divisionData");
+const UpzilaModel = require("../models/UpzilaModel");
+const { upazilaData } = require("../_utils/data/upazilaData");
+const UnionModel = require("../models/UnionModel");
+const { unionData } = require("../_utils/data/unionData");
 
 const insertDefaultDivisions = asyncHandler(async (req, res) => {
 
@@ -48,5 +52,41 @@ const storeDistricts = asyncHandler(async (req, res) => {
     }
 });
 
+const storeUpzilas = asyncHandler(async (req, res) => {
 
-module.exports = { insertDefaultDivisions, storeDistricts }
+    await UpzilaModel.deleteMany();
+
+    const addUpzilas = await UpzilaModel.insertMany(upazilaData);
+
+    if (addUpzilas) {
+        res.status(200).json({
+            status: 200,
+            message: "Upzila list inserted successfully!",
+            data: addUpzilas,
+        });
+    } else {
+        res.status(400);
+        throw new Error("Failed to insert upzila list.");
+    }
+});
+
+const storeUnions = asyncHandler(async (req, res) => {
+
+    await UnionModel.deleteMany();
+
+    const addUnions = await UnionModel.insertMany(unionData);
+
+    if (addUnions) {
+        res.status(200).json({
+            status: 200,
+            message: "Union list inserted successfully!",
+            data: addUnions,
+        });
+    } else {
+        res.status(400);
+        throw new Error("Failed to insert union list.");
+    }
+});
+
+
+module.exports = { insertDefaultDivisions, storeDistricts, storeUpzilas, storeUnions }
