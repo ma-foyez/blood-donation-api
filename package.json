@@ -13,6 +13,12 @@
   "bugs": {
     "url": "https://github.com/ideskbd/mafoyez-portfolio-backend/issues"
   },
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "vercel-sapper"
+    }
+  ],
   "homepage": "https://github.com/ideskbd/mafoyez-portfolio-backend#readme",
   "dependencies": {
     "bcryptjs": "^2.4.3",
