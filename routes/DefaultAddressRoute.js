@@ -1,5 +1,5 @@
 const express = require("express");
-const { storeDistricts, insertDefaultDivisions, storeUpzilas, storeUnions, getAllDivisions, getAllDistricts, getDistrictsByDivision, getAllUpzilas, getUpzilasByDistrict, getAllUnions, getUnionsByUpzila } = require("../controllers/defaultAddressMasterController");
+const { storeDistricts, insertDefaultDivisions, storeUpzilas, storeUnions, getAllDivisions, getAllDistricts, getDistrictsByDivision, getAllUpzilas, getUpzilasByDistrict, getAllUnions, getUnionsByUpzila } = require("../controllers/DefaultAddressMasterController");
 const AddressRoute = express.Router();
 
 /**
