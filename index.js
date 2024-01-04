@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/v1/auth', AuthRouter);
-// app.use('/api/v1', AddressRoute);
+app.use('/api/v1', AddressRoute);
 // app.use('/api/v1/division', DivisionRoute);
 // app.use('/api/v1/district', DistrictRoute);
 
