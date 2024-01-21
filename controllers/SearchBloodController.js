@@ -1,0 +1,87 @@
+const asyncHandler = require("express-async-handler");
+const Auth = require("../models/AuthModal");
+
+/**
+ * Get All Donation History
+ */
+const searchBloods = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const { division_id, district_id, area_id, post_office, blood_group } = req.query;
+
+        // Construct the filter object based on provided parameters
+        const filter = {};
+
+        if (division_id) filter['address.division_id'] = parseInt(division_id);
+        if (district_id) filter['address.district_id'] = parseInt(district_id);
+        if (area_id) filter['address.area_id'] = parseInt(area_id);
+        if (post_office) filter['address.post_office'] = { $regex: post_office, $options: 'i' }; // Case-insensitive search
+
+        if (blood_group) {
+            // If the last character is neither '+' nor '-', append '+'
+            const adjustedBloodGroup = (blood_group.endsWith('+') || blood_group.endsWith('-'))
+                ? blood_group
+                : `${blood_group}+`;
+        
+            // Remove all white spaces from the entire string
+            const trimmedBloodGroup = adjustedBloodGroup.replace(/\s/g, '');
+        
+            console.log('trimmedBloodGroup :>> ', trimmedBloodGroup);
+            filter['blood_group'] = trimmedBloodGroup;
+        }
+        
+        // Get the total count of users with the applied filter
+        const totalUsers = await Auth.countDocuments(filter);
+
+        // Calculate pagination values
+        const pageCount = Math.ceil(totalUsers / limit);
+        const skip = (page - 1) * limit;
+
+        // Get paginated users from Auth collection with specified fields and filter
+        const authList = await Auth.find(filter)
+            .select({
+                _id: 1,
+                name: 1,
+                mobile: 1,
+                email: 1,
+                dob: 1,
+                blood_group: 1,
+                occupation: 1,
+                is_weight_50kg: 1,
+                last_donation: 1,
+                address: 1,
+                pic: 1,
+                created_at: 1,
+                createdAt: 1,
+                updatedAt: 1,
+            })
+            .sort({ last_donation: -1 }) // Sort by last_donation in descending order (newest first)
+            .skip(skip)
+            .limit(limit);
+
+        // Send the response with pagination information and updated data
+        res.status(201).json({
+            pagination: {
+                total_data: totalUsers,
+                total_page: pageCount,
+                current_page: page,
+                data_load_current_page: authList.length,
+            },
+            data: authList,
+            status: 201,
+            message: "Donar search successfully!",
+        });
+    } catch (error) {
+        // Handle errors
+        console.error(error);
+        res.status(400).json({
+            status: 400,
+            message: "Failed search donar",
+        });
+    }
+};
+
+module.exports = { searchBloods };
+

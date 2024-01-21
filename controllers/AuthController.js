@@ -53,6 +53,7 @@ const registerUser = asyncHandler(async (req, res) => {
             data: {
                 _id: user._id,
                 name: user.name,
+                mobile: user.mobile,
                 email: user.email,
                 dob: user.dob,
                 occupation: user.occupation,
@@ -90,6 +91,7 @@ const authUser = asyncHandler(async (req, res) => {
             data: {
                 _id: user._id,
                 name: user.name,
+                mobile: user.mobile,
                 email: user.email,
                 dob: user.dob,
                 occupation: user.occupation,
