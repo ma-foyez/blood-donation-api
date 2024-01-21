@@ -1,6 +1,5 @@
 const asyncHandler = require("express-async-handler");
 const Auth = require("../models/AuthModal");
-const Donation = require("../models/DonationModel");
 
 /**
  * Get All Donation History
@@ -10,16 +9,29 @@ const searchBloods = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
 
-        const { blood_group, division_id, district_id, area_id, post_office } = req.query;
+        const { division_id, district_id, area_id, post_office, blood_group } = req.query;
 
         // Construct the filter object based on provided parameters
         const filter = {};
-        if (blood_group) filter['blood_group'] = blood_group;
+
         if (division_id) filter['address.division_id'] = parseInt(division_id);
         if (district_id) filter['address.district_id'] = parseInt(district_id);
         if (area_id) filter['address.area_id'] = parseInt(area_id);
         if (post_office) filter['address.post_office'] = { $regex: post_office, $options: 'i' }; // Case-insensitive search
 
+        if (blood_group) {
+            // If the last character is neither '+' nor '-', append '+'
+            const adjustedBloodGroup = (blood_group.endsWith('+') || blood_group.endsWith('-'))
+                ? blood_group
+                : `${blood_group}+`;
+        
+            // Remove all white spaces from the entire string
+            const trimmedBloodGroup = adjustedBloodGroup.replace(/\s/g, '');
+        
+            console.log('trimmedBloodGroup :>> ', trimmedBloodGroup);
+            filter['blood_group'] = trimmedBloodGroup;
+        }
+        
         // Get the total count of users with the applied filter
         const totalUsers = await Auth.countDocuments(filter);
 
