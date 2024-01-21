@@ -8,6 +8,8 @@ const AuthRouter = require("./routes/AuthRoute");
 // const DivisionRoute = require("./routes/DivisionsRoute");
 // const DistrictRoute = require("./routes/DistrictRoute");
 const AddressRoute = require("./routes/DefaultAddressRoute");
+const DonationRoute = require("./routes/DonationRoute");
+const SearchDonar = require("./routes/SearchBloodRoute");
 
 
 dotenv.config();
@@ -25,8 +27,8 @@ app.get('/', (req, res) => {
 
 app.use('/v1/auth', AuthRouter);
 app.use('/v1', AddressRoute);
-// app.use('/api/v1/division', DivisionRoute);
-// app.use('/api/v1/district', DistrictRoute);
+app.use('/v1', DonationRoute);
+app.use('/v1', SearchDonar);
 
 app.use(notFound)
 app.use(errorHandler)
