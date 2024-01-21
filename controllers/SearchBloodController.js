@@ -10,15 +10,25 @@ const searchBloods = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
 
-        // Get the total count of users
-        const totalUsers = await Auth.countDocuments();
+        const { blood_group, division_id, district_id, area_id, post_office } = req.query;
+
+        // Construct the filter object based on provided parameters
+        const filter = {};
+        if (blood_group) filter['blood_group'] = blood_group;
+        if (division_id) filter['address.division_id'] = parseInt(division_id);
+        if (district_id) filter['address.district_id'] = parseInt(district_id);
+        if (area_id) filter['address.area_id'] = parseInt(area_id);
+        if (post_office) filter['address.post_office'] = { $regex: post_office, $options: 'i' }; // Case-insensitive search
+
+        // Get the total count of users with the applied filter
+        const totalUsers = await Auth.countDocuments(filter);
 
         // Calculate pagination values
         const pageCount = Math.ceil(totalUsers / limit);
         const skip = (page - 1) * limit;
 
-        // Get paginated users from Auth collection with specified fields
-        const authList = await Auth.find({})
+        // Get paginated users from Auth collection with specified fields and filter
+        const authList = await Auth.find(filter)
             .select({
                 _id: 1,
                 name: 1,
@@ -35,6 +45,7 @@ const searchBloods = async (req, res) => {
                 createdAt: 1,
                 updatedAt: 1,
             })
+            .sort({ last_donation: -1 }) // Sort by last_donation in descending order (newest first)
             .skip(skip)
             .limit(limit);
 
