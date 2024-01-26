@@ -94,7 +94,7 @@ const getAllDonationHistory = asyncHandler(async (req, res) => {
 
     let countPromise, itemsPromise;
 
-    const donationQuery = { user: auth_user }; 
+    const donationQuery = { donar_id: auth_user }; 
 
     if (status && status.trim() !== '') {
         donationQuery.status = status;
