@@ -4,8 +4,11 @@ const bcrypt = require("bcryptjs");
 // Address Schema
 const AddressSchema = mongoose.Schema({
     division_id: { type: Number, required: true },
+    division: { type: String, required: false },
     district_id: { type: Number, required: true },
+    district: { type: String, required: false },
     area_id: { type: Number, required: true },
+    area: { type: String, required: false },
     post_office: { type: String, required: true },
 });
 
@@ -18,7 +21,7 @@ const AuthSchema = mongoose.Schema(
         blood_group: { type: String, required: true },
         occupation: { type: String, default: "" },
         is_weight_50kg: { type: Boolean, required: true },
-        last_donation: { type: Date, default: Date.now, required: true },
+        last_donation: { type: Date, required: false, default: "" },
         address: { type: AddressSchema, required: true },
         password: { type: String, required: true },
         pic: {
