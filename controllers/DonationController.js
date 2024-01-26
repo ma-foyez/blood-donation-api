@@ -84,7 +84,6 @@ const storeNewDonationHistory = asyncHandler(async (req, res) => {
 /**
  * Get All Donation History
  */
-
 const getAllDonationHistory = asyncHandler(async (req, res) => {
     const auth_user = req.user.id;
     const page = parseInt(req.query.page) || 1;
@@ -94,14 +93,16 @@ const getAllDonationHistory = asyncHandler(async (req, res) => {
 
     let countPromise, itemsPromise;
 
-    const donationQuery = { donar_id: auth_user }; 
+    const donationQuery = { donar_id: auth_user };
 
     if (status && status.trim() !== '') {
         donationQuery.status = status;
     }
 
     countPromise = Donation.countDocuments(donationQuery);
-    itemsPromise = Donation.find(donationQuery).limit(limit).skip(page > 1 ? skip : 0);
+    
+    // Modify the query to include sorting by 'createdAt' in descending order
+    itemsPromise = Donation.find(donationQuery).sort({ createdAt: -1 }).limit(limit).skip(page > 1 ? skip : 0);
 
     const [count, items] = await Promise.all([countPromise, itemsPromise]);
     const pageCount = Math.ceil(count / limit);
