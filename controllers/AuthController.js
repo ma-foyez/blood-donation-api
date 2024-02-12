@@ -94,6 +94,10 @@ const authUser = asyncHandler(async (req, res) => {
 
     if (user && (await user.matchPassword(password))) {
 
+        const getDivision = await getDivisionByID(user.address.division_id);
+        const getDistrict = await getDistrictByID(user.address.district_id);
+        const getArea = await getUpzilaByID(user.address.area_id);
+
         const token = generateToken(user._id);
         user.tokens.push({ token });
         await user.save();
@@ -109,9 +113,16 @@ const authUser = asyncHandler(async (req, res) => {
                 dob: user.dob,
                 occupation: user.occupation,
                 blood_group: user.blood_group,
-                address: user.address,
+                isAvailable: user.isAvailable,
+                isActive: user.isActive,
                 is_weight_50kg: user.is_weight_50kg,
                 last_donation: user.last_donation,
+                address: {
+                    division: getDivision.name ?? "",
+                    district: getDistrict.name ?? "",
+                    area: getArea.name ?? "",
+                    post_office: user.address.post_office,
+                },
                 pic: user.pic,
                 access_token: token,
             },

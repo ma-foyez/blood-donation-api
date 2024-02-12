@@ -1,5 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Auth = require("../models/AuthModal");
+const { getDivisionByID, getDistrictByID, getUpzilaByID } = require("../_utils/_helper/getAddressById");
+const DonationModel = require("../models/DonationModel");
 
 /**
  * Get All Donation History
@@ -12,7 +14,7 @@ const searchBloods = async (req, res) => {
         const { division_id, district_id, area_id, post_office, blood_group } = req.query;
 
         // Construct the filter object based on provided parameters
-        const filter = {};
+        const filter = { isActive: true };
 
         if (division_id) filter['address.division_id'] = parseInt(division_id);
         if (district_id) filter['address.district_id'] = parseInt(district_id);
@@ -24,14 +26,13 @@ const searchBloods = async (req, res) => {
             const adjustedBloodGroup = (blood_group.endsWith('+') || blood_group.endsWith('-'))
                 ? blood_group
                 : `${blood_group}+`;
-        
+
             // Remove all white spaces from the entire string
             const trimmedBloodGroup = adjustedBloodGroup.replace(/\s/g, '');
-        
-            console.log('trimmedBloodGroup :>> ', trimmedBloodGroup);
+
             filter['blood_group'] = trimmedBloodGroup;
         }
-        
+
         // Get the total count of users with the applied filter
         const totalUsers = await Auth.countDocuments(filter);
 
@@ -54,12 +55,34 @@ const searchBloods = async (req, res) => {
                 address: 1,
                 pic: 1,
                 created_at: 1,
-                createdAt: 1,
-                updatedAt: 1,
+                // createdAt: 1,
+                // updatedAt: 1,
             })
             .sort({ last_donation: -1 }) // Sort by last_donation in descending order (newest first)
             .skip(skip)
             .limit(limit);
+
+        // Replace the address property for each user in authList
+        const authListWithUpdatedAddress = await Promise.all(authList.map(async (user) => {
+            const getDivision = await getDivisionByID(user.address.division_id);
+            const getDistrict = await getDistrictByID(user.address.district_id);
+            const getArea = await getUpzilaByID(user.address.area_id);
+
+            // Calculate totalDonation for the user
+            const userDonations = await DonationModel.find({ donar_id: user._id });
+
+            // Replace the address property with the updated values
+            return {
+                ...user.toObject(), // Convert Mongoose document to plain JavaScript object
+                totalDonation: userDonations.length,
+                address: {
+                    division: getDivision.name ?? "",
+                    district: getDistrict.name ?? "",
+                    area: getArea.name ?? "",
+                    post_office: user.address.post_office,
+                },
+            };
+        }));
 
         // Send the response with pagination information and updated data
         res.status(201).json({
@@ -67,9 +90,9 @@ const searchBloods = async (req, res) => {
                 total_data: totalUsers,
                 total_page: pageCount,
                 current_page: page,
-                data_load_current_page: authList.length,
+                data_load_current_page: authListWithUpdatedAddress.length,
             },
-            data: authList,
+            data: authListWithUpdatedAddress,
             status: 201,
             message: "Donar search successfully!",
         });
