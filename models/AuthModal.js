@@ -22,6 +22,8 @@ const AuthSchema = mongoose.Schema(
         occupation: { type: String, default: "" },
         is_weight_50kg: { type: Boolean, required: true },
         last_donation: { type: Date, required: false, default: "" },
+        isActive: { type: Boolean, required: false, default: true },
+        isAvailable: { type: Boolean, required: false, default: true },
         address: { type: AddressSchema, required: true },
         password: { type: String, required: true },
         pic: {

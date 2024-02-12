@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 const res = require("express/lib/response");
 const Auth = require("../models/AuthModal");
 const { generateToken } = require("../config/generateToken");
+const { getDivisionByID, getDistrictByID, getUpzilaByID, getUnionByID } = require("../_utils/_helper/getAddressById");
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -42,6 +43,11 @@ const registerUser = asyncHandler(async (req, res) => {
     const user = await Auth.create(requestBody);
 
     if (user) {
+
+        const getDivision = await getDivisionByID(user.address.division_id);
+        const getDistrict = await getDistrictByID(user.address.district_id);
+        const getArea = await getUpzilaByID(user.address.area_id);
+
         // Generate token, save it to user, and save the user
         const token = generateToken(user._id);
         user.tokens.push({ token });
@@ -58,13 +64,20 @@ const registerUser = asyncHandler(async (req, res) => {
                 dob: user.dob,
                 occupation: user.occupation,
                 blood_group: user.blood_group,
-                address: user.address,
                 is_weight_50kg: user.is_weight_50kg,
+                isAvailable: user.isAvailable,
+                isActive: user.isActive,
                 last_donation: user.last_donation,
                 pic: user.pic,
+                address: {
+                    division: getDivision.name ?? "",
+                    district: getDistrict.name ?? "",
+                    area: getArea.name ?? "",
+                    post_office: user.address.post_office,
+                },
                 access_token: token,
             },
-           
+
         });
     } else {
         res.status(400).json({
