@@ -9,7 +9,7 @@ const Donation = require("../models/DonationModel");
 const storeNewDonationHistory = asyncHandler(async (req, res) => {
     const { donation_date, donation_place } = req.body;
     const auth_user = req.user.id;
-
+    let positiveDaysSinceLastDonation = 0;
     if (!donation_date || !donation_place) {
         res.status(400);
         throw new Error("Please provide all required fields");
@@ -23,16 +23,33 @@ const storeNewDonationHistory = asyncHandler(async (req, res) => {
     }
 
     // Check if the user has previous donations
-    const lastDonation = await Donation.findOne(
-        { donar_id: auth_user },
-        { donation_date: 1 },
-        { sort: { donation_date: -1 } }
+    const existingDonation = await Donation.findOne(
+        { donar_id: auth_user, donation_date: new Date(donation_date) },
+        { donation_date: 1 }
     );
 
-    if (lastDonation) {
+    if (existingDonation) {
+        res.status(400);
+        throw new Error(`A donation with the date ${donation_date} already exists.`);
+    }
+
+    const nearestDonation = await Donation.findOne(
+        { donar_id: auth_user, donation_date: { $ne: new Date(donation_date) } },
+        { donation_date: 1 },
+        { sort: { donation_date: 1 } }
+    );
+
+    // Check if the user has previous donations
+    // const lastDonation = await Donation.findOne(
+    //     { donar_id: auth_user },
+    //     { donation_date: 1 },
+    //     { sort: { donation_date: -1 } }
+    // );
+
+    if (nearestDonation) {
         // Ensure both donation_date and lastDonation.donation_date are Date objects
         const currentDonationDate = new Date(donation_date);
-        const lastDonationDate = new Date(lastDonation.donation_date);
+        const lastDonationDate = new Date(nearestDonation.donation_date);
 
         // Calculate the difference in days between the last donation and the current request
         const millisecondsInADay = 24 * 60 * 60 * 1000;
@@ -40,7 +57,12 @@ const storeNewDonationHistory = asyncHandler(async (req, res) => {
             (currentDonationDate.getTime() - lastDonationDate.getTime()) / millisecondsInADay
         );
 
-        if (daysSinceLastDonation < 90) {
+        // If daysSinceLastDonation is negative, convert it to a positive value
+        positiveDaysSinceLastDonation = daysSinceLastDonation < 0 ? Math.abs(daysSinceLastDonation)
+            : daysSinceLastDonation;
+
+        console.log('positiveDaysSinceLastDonation :>> ', positiveDaysSinceLastDonation);
+        if (positiveDaysSinceLastDonation < 90) {
             res.status(400);
             throw new Error("Your donation is not acceptable. It's too soon since your last donation.");
         }
@@ -100,7 +122,7 @@ const getAllDonationHistory = asyncHandler(async (req, res) => {
     }
 
     countPromise = Donation.countDocuments(donationQuery);
-    
+
     // Modify the query to include sorting by 'createdAt' in descending order
     itemsPromise = Donation.find(donationQuery).sort({ createdAt: -1 }).limit(limit).skip(page > 1 ? skip : 0);
 
