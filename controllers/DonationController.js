@@ -63,7 +63,7 @@ const storeNewDonationHistory = asyncHandler(async (req, res) => {
 
     const createDonation = await Donation.create({
         donar_id: auth_user,
-        donar_name: getUserInfo.name,
+        // donar_name: getUserInfo.name,
         donation_date,
         donation_place,
     });
@@ -127,6 +127,8 @@ const getAllDonationHistory = asyncHandler(async (req, res) => {
         return errorResponse(res, 400, "Failed to fetch donation history.");
     }
 
+    // const getUserInfo = await Auth.findOne({ _id: auth_user });
+
     res.status(201).json({
         pagination: {
             total_data: count,
@@ -158,4 +160,4 @@ const deleteDonationData = asyncHandler(async (req, res) => {
     }
 });
 
-module.exports = { storeNewDonationHistory, getAllDonationHistory, deleteDonationData };
+module.exports = { storeNewDonationHistory, getAllDonationHistory, deleteDonationData, deleteDonationData };
