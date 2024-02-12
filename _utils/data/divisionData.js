@@ -1,66 +1,66 @@
 const divisionData = [
     {
-        "division_id": "1",
-        "division_code": "chattogram",
+        "id": "1",
         "name": "Chattogram",
         "bn_name": "চট্টগ্রাম",
-        "coordinates": "23.1793, 91.9882",
+        "lat": "23.1793",
+        "lon": " 91.9882",
         "url": "www.chittagongdiv.gov.bd"
     },
     {
-        "division_id": "2",
-        "division_code": "rajshahi",
+        "id": "2",
         "name": "Rajshahi",
         "bn_name": "রাজশাহী",
-        "coordinates": "24.7106, 88.9414",
+        "lat": "24.7106",
+        "lon": "88.9414",
         "url": "www.rajshahidiv.gov.bd"
     },
     {
-        "division_id": "3",
-        "division_code": "khulna",
+        "id": "3",
         "name": "Khulna",
         "bn_name": "খুলনা",
-        "coordinates": "22.8088, 89.2467",
+        "lat": "22.8088",
+        "lon": "89.2467",
         "url": "www.khulnadiv.gov.bd"
     },
     {
-        "division_id": "4",
-        "division_code": "barishal",
+        "id": "4",
         "name": "Barishal",
         "bn_name": "বরিশাল",
-        "coordinates": "22.3811, 90.3372",
+        "lat": "22.3811",
+        "lon": "90.3372",
         "url": "www.barisaldiv.gov.bd"
     },
     {
-        "division_id": "5",
-        "division_code": "sylhet",
+        "id": "5",
         "name": "Sylhet",
         "bn_name": "সিলেট",
-        "coordinates": "24.7050, 91.6761",
+        "lat": "24.7050",
+        "lon": "91.6761",
         "url": "www.sylhetdiv.gov.bd"
     },
     {
-        "division_id": "6",
-        "division_code": "dhaka",
+        "id": "6",
         "name": "Dhaka",
         "bn_name": "ঢাকা",
-        "coordinates": "23.9536, 90.1495",
+        "lat": "23.9536",
+        "lon": "90.1495",
         "url": "www.dhakadiv.gov.bd"
     },
     {
-        "division_id": "7",
-        "division_code": "rangpur",
+        "id": "7",
         "name": "Rangpur",
         "bn_name": "রংপুর",
-        "coordinates": "25.8483, 88.9414",
+        "lat": "25.8483",
+        "lon": "88.9414",
         "url": "www.rangpurdiv.gov.bd"
     },
     {
-        "division_id": "8",
-        "division_code": "mymensingh",
+        "id": "8",
         "name": "Mymensingh",
         "bn_name": "ময়মনসিংহ",
-        "coordinates": "24.7136, 90.4502",
+        "lat": "24.7136",
+        "lon": "90.4502",
         "url": "www.mymensinghdiv.gov.bd"
     },
 

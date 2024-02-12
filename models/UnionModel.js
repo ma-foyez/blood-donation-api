@@ -2,10 +2,12 @@ const mongoose = require("mongoose");
 
 const UnionSchema = mongoose.Schema(
     {
-        union_id: { type: String, required: true, unique: true  },
-        upzila_id: { type: String, required: true },
+        parent_id: { type: String, required: true },
+        id: { type: String, required: true, unique: true  },
         name: { type: String, required: true},
         bn_name: { type: String, required: true},
+        lat: { type: String, required: false, default: ""},
+        lon: { type: String, required: false, default: ""},
         url: { type: String, required: false, default: ""},
     },
     {

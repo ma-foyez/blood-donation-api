@@ -101,7 +101,7 @@ const getAllDistricts = asyncHandler(async (req, res) => {
  */
 const getDistrictsByDivision = asyncHandler(async (req, res) => {
 
-    const districtByDivision = await DistrictModel.find({ division_id: req.params.id });
+    const districtByDivision = await DistrictModel.find({ parent_id: req.params.id });
 
     if (districtByDivision) {
         res.status(201).json({
@@ -159,7 +159,7 @@ const getAllUpzilas = asyncHandler(async (req, res) => {
  */
 const getUpzilasByDistrict = asyncHandler(async (req, res) => {
 
-    const districtByDivision = await UpzilaModel.find({ district_id: req.params.id });
+    const districtByDivision = await UpzilaModel.find({ parent_id: req.params.id });
 
     if (districtByDivision) {
         res.status(201).json({
@@ -216,7 +216,7 @@ const getAllUnions = asyncHandler(async (req, res) => {
  */
 const getUnionsByUpzila = asyncHandler(async (req, res) => {
 
-    const unionsByUpzila = await UnionModel.find({ upzila_id: req.params.id });
+    const unionsByUpzila = await UnionModel.find({ parent_id: req.params.id });
 
     if (unionsByUpzila) {
         res.status(201).json({
