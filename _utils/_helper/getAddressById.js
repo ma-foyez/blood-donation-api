@@ -1,6 +1,6 @@
 const Division = require("../../models/DivisionsModel");
 const District = require("../../models/DistrictsModel");
-const Upzila = require("../../models/UpzilaModel");
+const AreaModel = require("../../models/AreaModel");
 const Union = require("../../models/UnionModel");
 
 const getDivisionByID = async (id) => {
@@ -13,8 +13,8 @@ const getDistrictByID = async (id) => {
     return singleDistrict;
 }
 
-const getUpzilaByID = async (id) => {
-    const singleUpzila = await Upzila.findOne({ id });
+const getAreaByID = async (id) => {
+    const singleUpzila = await AreaModel.findOne({ id });
     return singleUpzila;
 }
 
@@ -24,4 +24,4 @@ const getUnionByID = async (id) => {
 }
 
 
-module.exports = { getDivisionByID, getDistrictByID, getUpzilaByID, getUnionByID }
+module.exports = { getDivisionByID, getDistrictByID, getAreaByID, getUnionByID }

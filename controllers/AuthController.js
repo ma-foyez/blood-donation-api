@@ -2,7 +2,7 @@ const asyncHandler = require("express-async-handler");
 const res = require("express/lib/response");
 const Auth = require("../models/AuthModal");
 const { generateToken } = require("../config/generateToken");
-const { getDivisionByID, getDistrictByID, getUpzilaByID, getUnionByID } = require("../_utils/_helper/getAddressById");
+const { getDivisionByID, getDistrictByID, getAreaByID, getUnionByID } = require("../_utils/_helper/getAddressById");
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -46,7 +46,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
         const getDivision = await getDivisionByID(user.address.division_id);
         const getDistrict = await getDistrictByID(user.address.district_id);
-        const getArea = await getUpzilaByID(user.address.area_id);
+        const getArea = await getAreaByID(user.address.area_id);
 
         // Generate token, save it to user, and save the user
         const token = generateToken(user._id);
@@ -96,7 +96,7 @@ const authUser = asyncHandler(async (req, res) => {
 
         const getDivision = await getDivisionByID(user.address.division_id);
         const getDistrict = await getDistrictByID(user.address.district_id);
-        const getArea = await getUpzilaByID(user.address.area_id);
+        const getArea = await getAreaByID(user.address.area_id);
 
         const token = generateToken(user._id);
         user.tokens.push({ token });

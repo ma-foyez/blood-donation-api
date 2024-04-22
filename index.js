@@ -30,7 +30,7 @@ app.use('/v1', AddressRoute);
 app.use('/v1', DonationRoute);
 app.use('/v1', SearchDonar);
 
-app.use(notFound)
-app.use(errorHandler)
+app.use(notFound);
+app.use(errorHandler);
 
 app.listen(PORT, console.log(`Server start on PORT ${PORT}`.yellow.bold));

@@ -2,11 +2,11 @@ const asyncHandler = require("express-async-handler");
 const DivisionModel = require("../models/DivisionsModel");
 const DistrictModel = require("../models/DistrictsModel");
 const UnionModel = require("../models/UnionModel");
-const UpzilaModel = require("../models/UpzilaModel");
+const AreaModel = require("../models/AreaModel");
 const { districtData } = require("../_utils/data/districtData");
 const { divisionData } = require("../_utils/data/divisionData");
-const { upazilaData } = require("../_utils/data/upazilaData");
 const { unionData } = require("../_utils/data/unionData");
+const { areaData } = require("../_utils/data/areaData");
 
 
 /**
@@ -115,21 +115,21 @@ const getDistrictsByDivision = asyncHandler(async (req, res) => {
 });
 
 
-const storeUpzilas = asyncHandler(async (req, res) => {
+const storeAreas = asyncHandler(async (req, res) => {
 
-    await UpzilaModel.deleteMany();
+    await AreaModel.deleteMany();
 
-    const addUpzilas = await UpzilaModel.insertMany(upazilaData);
+    const createdAreas = await AreaModel.insertMany(areaData);
 
-    if (addUpzilas) {
+    if (createdAreas) {
         res.status(200).json({
             status: 200,
-            message: "Upzila list inserted successfully!",
-            data: addUpzilas,
+            message: "Area list inserted successfully!",
+            data: createdAreas,
         });
     } else {
         res.status(400);
-        throw new Error("Failed to insert upzila list.");
+        throw new Error("Failed to insert area list.");
     }
 });
 
@@ -138,44 +138,42 @@ const storeUpzilas = asyncHandler(async (req, res) => {
  * Get Upzilas List
  */
 
-const getAllUpzilas = asyncHandler(async (req, res) => {
+const getAllAreas = asyncHandler(async (req, res) => {
     // Assuming DivisionModel.find({}) returns all divisions
-    const upzilas = await UpzilaModel.find({});
+    const areaList = await AreaModel.find({});
 
-    if (upzilas) {
+    if (areaList) {
         res.status(200).json({
             status: 200,
-            message: "Upzilas fetched successfully!",
-            data: upzilas,
+            message: "Area fetched successfully!",
+            data: areaList,
         });
     } else {
         res.status(404);
-        throw new Error("Upzilas not found.");
+        throw new Error("Area not found.");
     }
 });
 
 /**
  * Get Upzila By District ID
  */
-const getUpzilasByDistrict = asyncHandler(async (req, res) => {
+const getAreaByDistrict = asyncHandler(async (req, res) => {
 
-    const districtByDivision = await UpzilaModel.find({ parent_id: req.params.id });
+    const districtByDivision = await AreaModel.find({ parent_id: req.params.id });
 
     if (districtByDivision) {
         res.status(201).json({
             data: districtByDivision,
-            message: "Upzilas fetched successfully!",
+            message: "Area fetched successfully!",
         });
     } else {
         res.status(400);
-        throw new Error("Upzilas fetched failed!",);
+        throw new Error("Area fetched failed!",);
     }
 });
 
 const storeUnions = asyncHandler(async (req, res) => {
-
     await UnionModel.deleteMany();
-
     const addUnions = await UnionModel.insertMany(unionData);
 
     if (addUnions) {
@@ -196,9 +194,7 @@ const storeUnions = asyncHandler(async (req, res) => {
  */
 
 const getAllUnions = asyncHandler(async (req, res) => {
-
     const unions = await UnionModel.find({});
-
     if (unions) {
         res.status(200).json({
             status: 200,
@@ -215,9 +211,7 @@ const getAllUnions = asyncHandler(async (req, res) => {
  * Get Unions By Upzila ID
  */
 const getUnionsByUpzila = asyncHandler(async (req, res) => {
-
     const unionsByUpzila = await UnionModel.find({ parent_id: req.params.id });
-
     if (unionsByUpzila) {
         res.status(201).json({
             data: unionsByUpzila,
@@ -229,4 +223,4 @@ const getUnionsByUpzila = asyncHandler(async (req, res) => {
     }
 });
 
-module.exports = { insertDefaultDivisions, storeDistricts, storeUpzilas, storeUnions, getAllDivisions, getAllDistricts, getDistrictsByDivision, getAllUpzilas, getUpzilasByDistrict, getAllUnions, getUnionsByUpzila }
+module.exports = { insertDefaultDivisions, storeDistricts, storeAreas, storeUnions, getAllDivisions, getAllDistricts, getDistrictsByDivision, getAllAreas, getAreaByDistrict, getAllUnions, getUnionsByUpzila }

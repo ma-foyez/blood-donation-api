@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const UpzilaSchema = mongoose.Schema(
+const AreaSchema = mongoose.Schema(
     {
         parent_id: { type: String, required: true, },
         id: { type: String, required: true, unique: true },
@@ -11,12 +11,12 @@ const UpzilaSchema = mongoose.Schema(
         url: { type: String, required: false, default: "" },
     },
     {
-        collection: "upzilas",
+        collection: "areas",
         timestamps: true,
         versionKey: false,
     }
 );
 
-const UpzilaModel = mongoose.model("UpzilaModel", UpzilaSchema);
+const AreaModel = mongoose.model("AreaModel", AreaSchema);
 
-module.exports = UpzilaModel;
+module.exports = AreaModel;

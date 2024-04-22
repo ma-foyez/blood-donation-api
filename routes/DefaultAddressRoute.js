@@ -1,5 +1,5 @@
 const express = require("express");
-const { storeDistricts, insertDefaultDivisions, storeUpzilas, storeUnions, getAllDivisions, getAllDistricts, getDistrictsByDivision, getAllUpzilas, getUpzilasByDistrict, getAllUnions, getUnionsByUpzila } = require("../controllers/DefaultAddressMasterController");
+const { storeDistricts, insertDefaultDivisions, storeUnions, getAllDivisions, getAllDistricts, getDistrictsByDivision, getAllUnions, getUnionsByUpzila, storeAreas, getAllAreas, getAreaByDistrict } = require("../controllers/DefaultAddressMasterController");
 const AddressRoute = express.Router();
 
 /**
@@ -16,17 +16,17 @@ AddressRoute.route('/district').get(getAllDistricts);
 AddressRoute.route('/district/:id').get(getDistrictsByDivision);
 
 /**
- * Upzilas
+ * Areas
  */
-AddressRoute.route('/upzila/store').post(storeUpzilas);
-AddressRoute.route('/upzila').get(getAllUpzilas);
-AddressRoute.route('/upzila/:id').get(getUpzilasByDistrict);
+AddressRoute.route('/area/store').post(storeAreas);
+AddressRoute.route('/area').get(getAllAreas);
+AddressRoute.route('/area/:id').get(getAreaByDistrict);
 
 /**
  * Unions
  */
-AddressRoute.route('/union/store').post(storeUnions);
-AddressRoute.route('/union').get(getAllUnions);
-AddressRoute.route('/union/:id').get(getUnionsByUpzila);
+// AddressRoute.route('/union/store').post(storeUnions);
+// AddressRoute.route('/union').get(getAllUnions);
+// AddressRoute.route('/union/:id').get(getUnionsByUpzila);
 
 module.exports = AddressRoute;

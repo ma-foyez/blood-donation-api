@@ -1,6 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const Auth = require("../models/AuthModal");
-const { getDivisionByID, getDistrictByID, getUpzilaByID } = require("../_utils/_helper/getAddressById");
+const { getDivisionByID, getDistrictByID, getAreaByID } = require("../_utils/_helper/getAddressById");
 const DonationModel = require("../models/DonationModel");
 
 /**
@@ -66,7 +66,7 @@ const searchBloods = async (req, res) => {
         const authListWithUpdatedAddress = await Promise.all(authList.map(async (user) => {
             const getDivision = await getDivisionByID(user.address.division_id);
             const getDistrict = await getDistrictByID(user.address.district_id);
-            const getArea = await getUpzilaByID(user.address.area_id);
+            const getArea = await getAreaByID(user.address.area_id);
 
             // Calculate totalDonation for the user
             const userDonations = await DonationModel.find({ donar_id: user._id });
