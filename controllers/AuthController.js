@@ -272,5 +272,44 @@ const updateProfileActive = asyncHandler(async (req, res) => {
     }
 });
 
+const getProfileData = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const user = await Auth.findById(userId);
 
-module.exports = { registerUser, authUser, logout, updateUserProfile, updateProfileActive }
+    if (user) {
+
+        const getDivision = await getDivisionByID(user.address.division_id);
+        const getDistrict = await getDistrictByID(user.address.district_id);
+        const getArea = await getAreaByID(user.address.area_id);
+
+        res.status(200).json({
+            status: 200,
+            message: "User info fetched successfully!",
+            data: {
+                _id: user._id,
+                name: user.name,
+                mobile: user.mobile,
+                email: user.email,
+                dob: user.dob,
+                occupation: user.occupation,
+                blood_group: user.blood_group,
+                isAvailable: user.isAvailable,
+                isActive: user.isActive,
+                is_weight_50kg: user.is_weight_50kg,
+                last_donation: user.last_donation,
+                address: {
+                    division: getDivision.name ?? "",
+                    district: getDistrict.name ?? "",
+                    area: getArea.name ?? "",
+                    post_office: user.address.post_office,
+                },
+                pic: user.pic,
+            },
+        });
+    } else {
+        res.status(400);
+        throw new Error("User not found!");
+    }
+});
+
+module.exports = { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData }
