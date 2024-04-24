@@ -52,6 +52,7 @@ const searchBloods = async (req, res) => {
                 occupation: 1,
                 is_weight_50kg: 1,
                 last_donation: 1,
+                isAvailable: 1,
                 address: 1,
                 pic: 1,
                 created_at: 1,

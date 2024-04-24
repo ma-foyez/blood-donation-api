@@ -3,6 +3,7 @@ const res = require("express/lib/response");
 const Auth = require("../models/AuthModal");
 const { generateToken } = require("../config/generateToken");
 const { getDivisionByID, getDistrictByID, getAreaByID, getUnionByID } = require("../_utils/_helper/getAddressById");
+const DonationModel = require("../models/DonationModel");
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -281,6 +282,7 @@ const getProfileData = asyncHandler(async (req, res) => {
         const getDivision = await getDivisionByID(user.address.division_id);
         const getDistrict = await getDistrictByID(user.address.district_id);
         const getArea = await getAreaByID(user.address.area_id);
+        const totalDonation = await DonationModel.countDocuments({ donar_id: userId });
 
         res.status(200).json({
             status: 200,
@@ -297,6 +299,7 @@ const getProfileData = asyncHandler(async (req, res) => {
                 isActive: user.isActive,
                 is_weight_50kg: user.is_weight_50kg,
                 last_donation: user.last_donation,
+                totalDonation: totalDonation,
                 address: {
                     division: getDivision.name ?? "",
                     district: getDistrict.name ?? "",
