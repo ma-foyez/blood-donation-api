@@ -1,9 +1,14 @@
 const asyncHandler = require("express-async-handler");
 const res = require("express/lib/response");
+const bcrypt = require("bcryptjs");
 const Auth = require("../models/AuthModal");
+const OtpModel = require("../models/OtpModel");
 const { generateToken } = require("../config/generateToken");
 const { getDivisionByID, getDistrictByID, getAreaByID, getUnionByID } = require("../_utils/_helper/getAddressById");
 const DonationModel = require("../models/DonationModel");
+const { storeOTP } = require("./OtpController");
+const { generateOTP } = require("../_utils/_helper/OtpGenerate");
+const { passwordResetOtpSMS, registerSMS, registrationSuccessSMS } = require("../_utils/_helper/smsServices");
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -21,9 +26,12 @@ const registerUser = asyncHandler(async (req, res) => {
         return;
     }
 
-    // Check if user already exists
-    const userExistsWithNumber = await Auth.findOne({ mobile: requestBody.mobile });
-    const userExitsWithEmail = await Auth.findOne({ email: requestBody.email });
+    // Check if user already exists with Approved
+    const userExistsWithNumber = await Auth.findOne({ mobile: requestBody.mobile, isApproved: true });
+    const userExitsWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: true });
+
+    const unApprovedWithMobile = await Auth.findOne({ mobile: requestBody.mobile, isApproved: false });
+    const unApprovedWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: false });
 
     if (userExistsWithNumber) {
         res.status(400).json({
@@ -40,8 +48,69 @@ const registerUser = asyncHandler(async (req, res) => {
         return;
     }
 
+    // If unapproved user exists with the provided mobile or email, delete it
+    if (unApprovedWithMobile) {
+        const removedUser = await Auth.findOneAndDelete({ mobile: requestBody.mobile, isApproved: false });
+        // console.log("Unapproved user with mobile deleted:", removedUser);
+    }
+    if (unApprovedWithEmail) {
+        const removedUser = await Auth.findOneAndDelete({ email: requestBody.email, isApproved: false });
+        // console.log("Unapproved user with email deleted:", removedUser);
+    }
+    // If user exists with the provided mobile number, call the storeOTP method
+    const otp = generateOTP();
+    const data = { mobile: requestBody.mobile, otp: process.env.SMS_MODE === 'prod' ? otp : process.env.TEST_OTP };
+    try {
+        const user = await Auth.create(requestBody);
+
+        if (user) {
+            const isStoreOTP = await storeOTP(data, res);
+            if (process.env.SMS_MODE === 'prod' && isStoreOTP.status(200)) {
+                registerSMS(requestBody.mobile, requestBody.name, otp);
+            }
+        } else {
+            res.status(400).json({
+                status: 400,
+                message: "Failed to create a new user",
+            });
+        }
+        // If OTP is successfully stored and the response status is 200, send SMS
+
+    } catch (error) {
+        console.error("Error occurred while storing OTP:", error);
+        res.status(500).json({
+            status: 500,
+            message: "Internal server error",
+        });
+    }
+});
+
+const OtpMatchForRegister = asyncHandler(async (req, res) => {
     // Create a new user with all the provided fields
-    const user = await Auth.create(requestBody);
+    // const user = await Auth.create(requestBody);
+
+    const { mobile, otp } = req.body;
+    const user = await Auth.findOne({ mobile: mobile });
+    const findOtpByMobile = await OtpModel.findOne({ mobile: mobile, otp: otp });
+
+    if (!findOtpByMobile) {
+        res.status(400).json({
+            status: 400,
+            message: "OTP doesn't match!",
+        });
+        return;
+    }
+
+    // Check if OTP has expired
+    const currentTime = new Date();
+    if (findOtpByMobile.expire_time < currentTime) {
+        res.status(400).json({
+            status: 400,
+            message: "OTP has expired!",
+        });
+        return;
+    }
+
 
     if (user) {
 
@@ -52,7 +121,12 @@ const registerUser = asyncHandler(async (req, res) => {
         // Generate token, save it to user, and save the user
         const token = generateToken(user._id);
         user.tokens.push({ token });
+        user.isApproved = true;
         await user.save();
+
+        if (process.env.SMS_MODE === 'prod') {
+            registrationSuccessSMS(user.mobile, user.name)
+        }
 
         res.status(200).json({
             status: 200,
@@ -86,12 +160,12 @@ const registerUser = asyncHandler(async (req, res) => {
             message: "Failed to create a new user",
         });
     }
-});
+})
 
 const authUser = asyncHandler(async (req, res) => {
     const { mobile, password } = req.body;
 
-    const user = await Auth.findOne({ mobile });
+    const user = await Auth.findOne({ mobile, isApproved: true });
 
     if (user && (await user.matchPassword(password))) {
 
@@ -315,4 +389,94 @@ const getProfileData = asyncHandler(async (req, res) => {
     }
 });
 
-module.exports = { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData }
+const requestPasswordReset = asyncHandler(async (req, res) => {
+    const { mobile } = req.body;
+    const userExistsWithNumber = await Auth.findOne({ mobile: mobile });
+
+    if (!userExistsWithNumber) {
+        res.status(400).json({
+            status: 400,
+            message: "User doesn't exits with this number!",
+        });
+        return;
+    }
+
+    // If user exists with the provided mobile number, call the storeOTP method
+    const otp = generateOTP();
+    // const data = {
+    //     mobile, otp
+    // }
+    const data = { mobile: mobile, otp: process.env.SMS_MODE === 'prod' ? otp : process.env.TEST_OTP };
+
+
+    try {
+        const isStoreOTP = await storeOTP(data, res);
+        // If OTP is successfully stored and the response status is 200, send SMS
+        if (process.env.SMS_MODE === 'prod' && isStoreOTP.status(200)) {
+            passwordResetOtpSMS(mobile, otp);
+        }
+    } catch (error) {
+        console.error("Error occurred while storing OTP:", error);
+        res.status(500).json({
+            status: 500,
+            message: "Internal server error",
+        });
+    }
+
+})
+
+const changePasswordByMatchingOtp = asyncHandler(async (req, res) => {
+    const { mobile, otp, password } = req.body;
+    const userExistsWithNumber = await Auth.findOne({ mobile: mobile });
+    const findOtpByMobile = await OtpModel.findOne({ mobile: mobile, otp: otp });
+
+    if (!findOtpByMobile) {
+        res.status(400).json({
+            status: 400,
+            message: "OTP doesn't match!",
+        });
+        return;
+    }
+
+    // Check if OTP has expired
+    const currentTime = new Date();
+    if (findOtpByMobile.expire_time < currentTime) {
+        res.status(400).json({
+            status: 400,
+            message: "OTP has expired!",
+        });
+        return;
+    }
+
+    // If OTP is valid and not expired, update the password
+    if (userExistsWithNumber) {
+        try {
+            // Generate salt and hash the new password
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            // Update the password in the database
+            await Auth.updateOne({ mobile }, { password: hashedPassword });
+
+            // Respond with success message
+            res.status(200).json({
+                status: 200,
+                message: "Password changed successfully!",
+            });
+        } catch (error) {
+            console.error('Error changing password:', error.message);
+            res.status(500).json({
+                status: 500,
+                message: "Internal server error",
+            });
+        }
+    } else {
+        res.status(400).json({
+            status: 400,
+            message: "User not found!",
+        });
+    }
+
+})
+
+module.exports = { registerUser, OtpMatchForRegister, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp }

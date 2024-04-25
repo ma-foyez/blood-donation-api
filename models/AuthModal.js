@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { type } = require("express/lib/response");
 
 // Address Schema
 const AddressSchema = mongoose.Schema({
@@ -26,6 +27,7 @@ const AuthSchema = mongoose.Schema(
         isAvailable: { type: Boolean, required: false, default: true },
         address: { type: AddressSchema, required: true },
         password: { type: String, required: true },
+        isApproved: { type: Boolean, require: false, default: false },
         pic: {
             type: String,
             default: function () {
