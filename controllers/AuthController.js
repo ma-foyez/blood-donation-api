@@ -8,7 +8,7 @@ const { getDivisionByID, getDistrictByID, getAreaByID, getUnionByID } = require(
 const DonationModel = require("../models/DonationModel");
 const { storeOTP } = require("./OtpController");
 const { generateOTP } = require("../_utils/_helper/OtpGenerate");
-const { passwordResetOtpSMS, registerSMS } = require("../_utils/_helper/smsServices");
+const { passwordResetOtpSMS, registerSMS, registrationSuccessSMS } = require("../_utils/_helper/smsServices");
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -59,13 +59,13 @@ const registerUser = asyncHandler(async (req, res) => {
     }
     // If user exists with the provided mobile number, call the storeOTP method
     const otp = generateOTP();
-    const data = { mobile: requestBody.mobile, otp: otp };
+    const data = { mobile: requestBody.mobile, otp: process.env.SMS_MODE === 'prod' ? otp : process.env.TEST_OTP };
     try {
         const user = await Auth.create(requestBody);
 
         if (user) {
             const isStoreOTP = await storeOTP(data, res);
-            if (isStoreOTP.status(200)) {
+            if (process.env.SMS_MODE === 'prod' && isStoreOTP.status(200)) {
                 registerSMS(requestBody.mobile, requestBody.name, otp);
             }
         } else {
@@ -124,6 +124,10 @@ const OtpMatchForRegister = asyncHandler(async (req, res) => {
         user.isApproved = true;
         await user.save();
 
+        if (process.env.SMS_MODE === 'prod') {
+            registrationSuccessSMS(user.mobile, user.name)
+        }
+
         res.status(200).json({
             status: 200,
             message: "You have been successfully created a new account",
@@ -161,7 +165,7 @@ const OtpMatchForRegister = asyncHandler(async (req, res) => {
 const authUser = asyncHandler(async (req, res) => {
     const { mobile, password } = req.body;
 
-    const user = await Auth.findOne({ mobile });
+    const user = await Auth.findOne({ mobile, isApproved: true });
 
     if (user && (await user.matchPassword(password))) {
 
@@ -399,14 +403,16 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
 
     // If user exists with the provided mobile number, call the storeOTP method
     const otp = generateOTP();
-    const data = {
-        mobile, otp
-    }
+    // const data = {
+    //     mobile, otp
+    // }
+    const data = { mobile: mobile, otp: process.env.SMS_MODE === 'prod' ? otp : process.env.TEST_OTP };
+
 
     try {
         const isStoreOTP = await storeOTP(data, res);
         // If OTP is successfully stored and the response status is 200, send SMS
-        if (isStoreOTP.status(200)) {
+        if (process.env.SMS_MODE === 'prod' && isStoreOTP.status(200)) {
             passwordResetOtpSMS(mobile, otp);
         }
     } catch (error) {

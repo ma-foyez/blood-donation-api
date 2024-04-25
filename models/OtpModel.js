@@ -7,7 +7,7 @@ const OtpSChema = mongoose.Schema(
         expire_time: { type: Date, required: true },
     },
     {
-        collection: "otp",
+        collection: "otps",
         timestamps: true,
         versionKey: false,
     }
