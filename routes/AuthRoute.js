@@ -1,5 +1,5 @@
 const express = require("express");
-const { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp } = require("../controllers/AuthController");
+const { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp, OtpMatchForRegister } = require("../controllers/AuthController");
 const { authenticateToken } = require("../config/generateToken");
 const AuthRouter = express.Router();
 
@@ -13,6 +13,7 @@ AuthRouter.put("/profile-activation", authenticateToken, updateProfileActive);
 AuthRouter.get("/profile", authenticateToken, getProfileData);
 AuthRouter.post("/password-reset-request", requestPasswordReset);
 AuthRouter.post("/password-reset", changePasswordByMatchingOtp);
+AuthRouter.post("/register-otp-match", OtpMatchForRegister);
 
 
 module.exports = AuthRouter;

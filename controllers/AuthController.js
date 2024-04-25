@@ -8,7 +8,7 @@ const { getDivisionByID, getDistrictByID, getAreaByID, getUnionByID } = require(
 const DonationModel = require("../models/DonationModel");
 const { storeOTP } = require("./OtpController");
 const { generateOTP } = require("../_utils/_helper/OtpGenerate");
-const { passwordResetOtpSMS, sendOtpViaSMS } = require("../_utils/_helper/smsServices");
+const { passwordResetOtpSMS, registerSMS } = require("../_utils/_helper/smsServices");
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -26,9 +26,12 @@ const registerUser = asyncHandler(async (req, res) => {
         return;
     }
 
-    // Check if user already exists
-    const userExistsWithNumber = await Auth.findOne({ mobile: requestBody.mobile });
-    const userExitsWithEmail = await Auth.findOne({ email: requestBody.email });
+    // Check if user already exists with Approved
+    const userExistsWithNumber = await Auth.findOne({ mobile: requestBody.mobile, isApproved: true });
+    const userExitsWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: true });
+
+    const unApprovedWithMobile = await Auth.findOne({ mobile: requestBody.mobile, isApproved: false });
+    const unApprovedWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: false });
 
     if (userExistsWithNumber) {
         res.status(400).json({
@@ -45,10 +48,69 @@ const registerUser = asyncHandler(async (req, res) => {
         return;
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    sendOtpViaSMS(requestBody.mobile, requestBody.name, otp);
+    // If unapproved user exists with the provided mobile or email, delete it
+    if (unApprovedWithMobile) {
+        const removedUser = await Auth.findOneAndDelete({ mobile: requestBody.mobile, isApproved: false });
+        // console.log("Unapproved user with mobile deleted:", removedUser);
+    }
+    if (unApprovedWithEmail) {
+        const removedUser = await Auth.findOneAndDelete({ email: requestBody.email, isApproved: false });
+        // console.log("Unapproved user with email deleted:", removedUser);
+    }
+    // If user exists with the provided mobile number, call the storeOTP method
+    const otp = generateOTP();
+    const data = { mobile: requestBody.mobile, otp: otp };
+    try {
+        const user = await Auth.create(requestBody);
+
+        if (user) {
+            const isStoreOTP = await storeOTP(data, res);
+            if (isStoreOTP.status(200)) {
+                registerSMS(requestBody.mobile, requestBody.name, otp);
+            }
+        } else {
+            res.status(400).json({
+                status: 400,
+                message: "Failed to create a new user",
+            });
+        }
+        // If OTP is successfully stored and the response status is 200, send SMS
+
+    } catch (error) {
+        console.error("Error occurred while storing OTP:", error);
+        res.status(500).json({
+            status: 500,
+            message: "Internal server error",
+        });
+    }
+});
+
+const OtpMatchForRegister = asyncHandler(async (req, res) => {
     // Create a new user with all the provided fields
-    const user = await Auth.create(requestBody);
+    // const user = await Auth.create(requestBody);
+
+    const { mobile, otp } = req.body;
+    const user = await Auth.findOne({ mobile: mobile });
+    const findOtpByMobile = await OtpModel.findOne({ mobile: mobile, otp: otp });
+
+    if (!findOtpByMobile) {
+        res.status(400).json({
+            status: 400,
+            message: "OTP doesn't match!",
+        });
+        return;
+    }
+
+    // Check if OTP has expired
+    const currentTime = new Date();
+    if (findOtpByMobile.expire_time < currentTime) {
+        res.status(400).json({
+            status: 400,
+            message: "OTP has expired!",
+        });
+        return;
+    }
+
 
     if (user) {
 
@@ -59,6 +121,7 @@ const registerUser = asyncHandler(async (req, res) => {
         // Generate token, save it to user, and save the user
         const token = generateToken(user._id);
         user.tokens.push({ token });
+        user.isApproved = true;
         await user.save();
 
         res.status(200).json({
@@ -93,7 +156,7 @@ const registerUser = asyncHandler(async (req, res) => {
             message: "Failed to create a new user",
         });
     }
-});
+})
 
 const authUser = asyncHandler(async (req, res) => {
     const { mobile, password } = req.body;
@@ -410,4 +473,4 @@ const changePasswordByMatchingOtp = asyncHandler(async (req, res) => {
 
 })
 
-module.exports = { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp }
+module.exports = { registerUser, OtpMatchForRegister, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp }
