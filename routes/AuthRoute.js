@@ -1,5 +1,5 @@
 const express = require("express");
-const { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData } = require("../controllers/AuthController");
+const { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset } = require("../controllers/AuthController");
 const { authenticateToken } = require("../config/generateToken");
 const AuthRouter = express.Router();
 
@@ -11,6 +11,7 @@ AuthRouter.post("/logout", authenticateToken, logout);
 AuthRouter.put("/profile-update", authenticateToken, updateUserProfile);
 AuthRouter.put("/profile-activation", authenticateToken, updateProfileActive);
 AuthRouter.get("/profile", authenticateToken, getProfileData);
+AuthRouter.post("/password-reset", requestPasswordReset);
 
 
 module.exports = AuthRouter;

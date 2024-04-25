@@ -4,7 +4,7 @@ const OtpSChema = mongoose.Schema(
     {
         mobile: { type: String, required: true },
         otp: { type: String, required: true },
-        expired_at: { type: Date, required: true },
+        expire_time: { type: Date, required: true },
     },
     {
         collection: "otp",

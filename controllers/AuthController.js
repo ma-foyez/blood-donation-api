@@ -4,6 +4,9 @@ const Auth = require("../models/AuthModal");
 const { generateToken } = require("../config/generateToken");
 const { getDivisionByID, getDistrictByID, getAreaByID, getUnionByID } = require("../_utils/_helper/getAddressById");
 const DonationModel = require("../models/DonationModel");
+const { storeOTP } = require("./OtpController");
+const { generateOTP } = require("../_utils/_helper/OtpGenerate");
+const { passwordResetOtpSMS, sendOtpViaSMS } = require("../_utils/_helper/smsServices");
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -40,6 +43,8 @@ const registerUser = asyncHandler(async (req, res) => {
         return;
     }
 
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    sendOtpViaSMS(requestBody.mobile, requestBody.name, otp);
     // Create a new user with all the provided fields
     const user = await Auth.create(requestBody);
 
@@ -315,4 +320,38 @@ const getProfileData = asyncHandler(async (req, res) => {
     }
 });
 
-module.exports = { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData }
+const requestPasswordReset = asyncHandler(async (req, res) => {
+    const { mobile } = req.body;
+    const userExistsWithNumber = await Auth.findOne({ mobile: mobile });
+
+    if (!userExistsWithNumber) {
+        res.status(400).json({
+            status: 400,
+            message: "User doesn't exits with this number!",
+        });
+        return;
+    }
+
+    // If user exists with the provided mobile number, call the storeOTP method
+    const otp = generateOTP();
+    const data = {
+        mobile, otp
+    }
+
+    try {
+        const isStoreOTP = await storeOTP(data, res);
+        // If OTP is successfully stored and the response status is 200, send SMS
+        if (isStoreOTP.status(200)) {
+            passwordResetOtpSMS(mobile, otp);
+        }
+    } catch (error) {
+        console.error("Error occurred while storing OTP:", error);
+        res.status(500).json({
+            status: 500,
+            message: "Internal server error",
+        });
+    }
+
+})
+
+module.exports = { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset }
