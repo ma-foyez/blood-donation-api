@@ -2,6 +2,9 @@
 const asyncHandler = require("express-async-handler");
 
 const OtpModel = require("../models/OtpModel");
+const Auth = require("../models/AuthModal");
+const { generateOTP } = require("../_utils/_helper/OtpGenerate");
+const { regenerateOtpMessage } = require("../_utils/_helper/smsServices");
 
 const storeOTP = asyncHandler(async (req, res) => {
     const { mobile, otp } = req;
@@ -71,4 +74,37 @@ const maskMobile = (mobile) => {
     return `${visibleStart}${maskedPart}${visibleEnd}`;
 };
 
-module.exports = { storeOTP }
+
+const regenerateOtp = asyncHandler(async (req, res) => {
+
+    const { mobile } = req.body;
+    const userExistsWithNumber = await Auth.findOne({ mobile: mobile });
+
+    if (!userExistsWithNumber) {
+        res.status(400).json({
+            status: 400,
+            message: "User doesn't exits with this number!",
+        });
+        return;
+    }
+
+    // If user exists with the provided mobile number, call the storeOTP method
+    const otp = generateOTP();
+    const data = { mobile: mobile, otp: process.env.SMS_MODE === 'prod' ? otp : process.env.TEST_OTP };
+    try {
+        const isStoreOTP = await storeOTP(data, res);
+        // If OTP is successfully stored and the response status is 200, send SMS
+        if (process.env.SMS_MODE === 'prod' && isStoreOTP.status(200)) {
+            regenerateOtpMessage(mobile, otp);
+        }
+    } catch (error) {
+        console.error("Error occurred while storing OTP:", error);
+        res.status(500).json({
+            status: 500,
+            message: "Internal server error",
+        });
+    }
+})
+
+
+module.exports = { storeOTP, regenerateOtp }

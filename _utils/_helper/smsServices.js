@@ -83,4 +83,30 @@ const registrationSuccessSMS = async (mobileNumber, userName) => {
         console.error('Error sending OTP via SMS:', error.message);
     }
 };
-module.exports = { registerSMS, passwordResetOtpSMS, registrationSuccessSMS }
+
+const regenerateOtpMessage = async (mobileNumber, otp) => {
+    const message = `Never share your OTP with anyone. Use ${otp} to verify your request.\n\n -${process.env.APP_NAME}`;
+    // Construct the request data
+    const requestData = {
+        api_key: apiKey,
+        senderid: sender_id,
+        number: mobileNumber,
+        message: message
+    };
+    try {
+        const response = await fetch(apiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
+        });
+
+        const responseData = await response.json();
+        console.log('Response from SMS provider:', responseData.success_message); 
+
+    } catch (error) {
+        console.error('Error sending OTP via SMS:', error.message);
+    }
+};
+
+
+module.exports = { registerSMS, passwordResetOtpSMS, registrationSuccessSMS, regenerateOtpMessage }
