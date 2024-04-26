@@ -14,7 +14,7 @@ const searchBloods = async (req, res) => {
         const { division_id, district_id, area_id, post_office, blood_group } = req.query;
 
         // Construct the filter object based on provided parameters
-        const filter = { isActive: true };
+        const filter = { isActive: true, isApproved: true };
 
         if (division_id) filter['address.division_id'] = parseInt(division_id);
         if (district_id) filter['address.district_id'] = parseInt(district_id);
