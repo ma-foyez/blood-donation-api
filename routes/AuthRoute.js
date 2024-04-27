@@ -1,7 +1,7 @@
 const express = require("express");
 const { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp, OtpMatchForRegister } = require("../controllers/AuthController");
 const { authenticateToken } = require("../config/generateToken");
-const { regenerateOtp } = require("../controllers/OtpController");
+const { regenerateOtp, matchOtp } = require("../controllers/OtpController");
 const AuthRouter = express.Router();
 
 AuthRouter.route('/').post(registerUser)
@@ -16,6 +16,7 @@ AuthRouter.post("/password-reset-request", requestPasswordReset);
 AuthRouter.post("/password-reset", changePasswordByMatchingOtp);
 AuthRouter.post("/register-otp-match", OtpMatchForRegister);
 AuthRouter.post("/resent-otp", regenerateOtp);
+AuthRouter.post("/otp-match", matchOtp);
 
 
 module.exports = AuthRouter;

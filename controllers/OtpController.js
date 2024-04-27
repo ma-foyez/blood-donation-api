@@ -106,5 +106,41 @@ const regenerateOtp = asyncHandler(async (req, res) => {
     }
 })
 
+const matchOtp = asyncHandler(async (req, res) => {
+    const { mobile, otp } = req.body;
+    const findOtpByMobile = await OtpModel.findOne({ mobile: mobile, otp: otp });
 
-module.exports = { storeOTP, regenerateOtp }
+    if (!findOtpByMobile) {
+        return res.status(400).json({
+            status: 400,
+            message: "OTP doesn't match!",
+        });
+    }
+
+    const currentTime = new Date();
+    if (process.env.SMS_MODE === 'prod' && findOtpByMobile.expire_time < currentTime) {
+        return res.status(400).json({
+            status: 400,
+            message: "OTP has expired!",
+        });
+    } else {
+        // Find all OTPs with the same value and check if any of them are still valid
+        const similarOtps = await OtpModel.find({ otp: otp });
+        const validOtps = similarOtps.filter(otp => otp.expire_time > currentTime);
+
+        if (validOtps.length === 0) {
+            return res.status(400).json({
+                status: 400,
+                message: "OTP has expired!",
+            });
+        }
+    }
+
+    return res.status(200).json({
+        status: 200,
+        message: "OTP matched successfully!",
+    });
+});
+
+
+module.exports = { storeOTP, regenerateOtp, matchOtp }

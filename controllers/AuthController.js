@@ -440,12 +440,23 @@ const changePasswordByMatchingOtp = asyncHandler(async (req, res) => {
 
     // Check if OTP has expired
     const currentTime = new Date();
-    if (findOtpByMobile.expire_time < currentTime) {
-        res.status(400).json({
+
+    if (process.env.SMS_MODE === 'prod' && findOtpByMobile.expire_time < currentTime) {
+        return res.status(400).json({
             status: 400,
             message: "OTP has expired!",
         });
-        return;
+    } else {
+        // Find all OTPs with the same value and check if any of them are still valid
+        const similarOtps = await OtpModel.find({ otp: otp });
+        const validOtps = similarOtps.filter(otp => otp.expire_time > currentTime);
+
+        if (validOtps.length === 0) {
+            return res.status(400).json({
+                status: 400,
+                message: "OTP has expired!",
+            });
+        }
     }
 
     // If OTP is valid and not expired, update the password
