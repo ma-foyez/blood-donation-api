@@ -3,6 +3,9 @@ const Auth = require("../models/AuthModal");
 const { getDivisionByID, getDistrictByID, getAreaByID } = require("../_utils/_helper/getAddressById");
 const DonationModel = require("../models/DonationModel");
 
+const MIN_DAYS_BETWEEN_DONATIONS = 90;
+const MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
+
 /**
  * Get All Donation History
  */
@@ -52,12 +55,9 @@ const searchBloods = async (req, res) => {
                 occupation: 1,
                 is_weight_50kg: 1,
                 last_donation: 1,
-                isAvailable: 1,
                 address: 1,
                 pic: 1,
                 created_at: 1,
-                // createdAt: 1,
-                // updatedAt: 1,
             })
             .sort({ last_donation: -1 }) // Sort by last_donation in descending order (newest first)
             .skip(skip)
@@ -72,9 +72,21 @@ const searchBloods = async (req, res) => {
             // Calculate totalDonation for the user
             const userDonations = await DonationModel.find({ donar_id: user._id });
 
+            // Set isAvailable based on the last_donation date
+
+            const lastDonationDate = user.last_donation;
+            const currentDate = new Date();
+            const daysSinceLastDonation = (currentDate - lastDonationDate) / (1000 * 60 * 60 * 24);
+            if (lastDonationDate && daysSinceLastDonation > MIN_DAYS_BETWEEN_DONATIONS) {
+                user.isAvailable = true;
+            } else {
+                user.isAvailable = false;
+            }
+
             // Replace the address property with the updated values
             return {
                 ...user.toObject(), // Convert Mongoose document to plain JavaScript object
+                isAvailable: user.isAvailable,
                 totalDonation: userDonations.length,
                 address: {
                     division: getDivision.name ?? "",

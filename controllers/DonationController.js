@@ -37,11 +37,18 @@ const storeNewDonationHistory = asyncHandler(async (req, res) => {
     }
 
     const nearestDonation = await Donation.findOne(
-        { donar_id: auth_user, donation_date: { $ne: new Date(donation_date) } },
+        { donar_id: auth_user, donation_date: { $lte: new Date(donation_date) } },
         { donation_date: 1 },
-        { sort: { donation_date: 1 } }
+        { sort: { donation_date: -1 } }
     );
 
+    // const nearestDonation = await Donation.findOne(
+    //     { donar_id: auth_user, donation_date: { $ne: new Date(donation_date) } },
+    //     { donation_date: 1 },
+    //     { sort: { donation_date: 1 } }
+    // );
+
+    console.log('nearestDonation :>> ', nearestDonation);
     if (nearestDonation) {
         const currentDonationDate = new Date(donation_date);
         const lastDonationDate = new Date(nearestDonation.donation_date);
@@ -50,15 +57,22 @@ const storeNewDonationHistory = asyncHandler(async (req, res) => {
             (currentDonationDate.getTime() - lastDonationDate.getTime()) / MILLISECONDS_IN_A_DAY
         );
 
-        if (daysBetweenDonations < 0) {
-            if (Math.abs(daysBetweenDonations) < MIN_DAYS_BETWEEN_DONATIONS) {
-                return errorResponse(
-                    res,
-                    400,
-                    "Your donation is not acceptable. It's too soon since your last donation."
-                );
-            }
+        if (daysBetweenDonations < MIN_DAYS_BETWEEN_DONATIONS) {
+            return errorResponse(
+                res,
+                400,
+                "Your donation is not acceptable. It's too soon since your last donation."
+            );
         }
+        // if (daysBetweenDonations < 0) {
+        //     if (Math.abs(daysBetweenDonations) < MIN_DAYS_BETWEEN_DONATIONS) {
+        //         return errorResponse(
+        //             res,
+        //             400,
+        //             "Your donation is not acceptable. It's too soon since your last donation."
+        //         );
+        //     }
+        // }
     }
 
     const createDonation = await Donation.create({
