@@ -48,7 +48,6 @@ const storeNewDonationHistory = asyncHandler(async (req, res) => {
     //     { sort: { donation_date: 1 } }
     // );
 
-    console.log('nearestDonation :>> ', nearestDonation);
     if (nearestDonation) {
         const currentDonationDate = new Date(donation_date);
         const lastDonationDate = new Date(nearestDonation.donation_date);
@@ -165,6 +164,20 @@ const deleteDonationData = asyncHandler(async (req, res) => {
     });
 
     if (removeTransaction) {
+
+        const nearestDonation = await Donation.findOne(
+            { donar_id: auth_user },
+            { donation_date: 1 },
+            { sort: { donation_date: -1 } } // Find the nearest donation by sorting in descending order
+        );
+
+        // Update last_donation in the Auth model with the nearest donation date
+        if (nearestDonation) {
+            const user = await Auth.findById(auth_user);
+            user.last_donation = nearestDonation.donation_date;
+            await user.save();
+        }
+
         res.status(200).json({
             status: 200,
             message: "Donation deleted successfully!",

@@ -138,7 +138,7 @@ const matchOtp = asyncHandler(async (req, res) => {
 
     return res.status(200).json({
         status: 200,
-        message: "OTP matched successfully!",
+        message: "OTP verified successfully!",
     });
 });
 
