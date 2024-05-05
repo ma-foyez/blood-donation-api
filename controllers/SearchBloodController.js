@@ -73,20 +73,19 @@ const searchBloods = async (req, res) => {
             const userDonations = await DonationModel.find({ donar_id: user._id });
 
             // Set isAvailable based on the last_donation date
-
-            const lastDonationDate = user.last_donation;
             const currentDate = new Date();
-            const daysSinceLastDonation = (currentDate - lastDonationDate) / (1000 * 60 * 60 * 24);
-            if (lastDonationDate && daysSinceLastDonation > MIN_DAYS_BETWEEN_DONATIONS) {
-                user.isAvailable = true;
-            } else {
-                user.isAvailable = false;
+            const lastDonationDate = user.last_donation;
+            let isAvailable = true;
+
+            if (lastDonationDate !== null) {
+                const daysSinceLastDonation = (currentDate - lastDonationDate) / (1000 * 60 * 60 * 24);
+                isAvailable = daysSinceLastDonation > MIN_DAYS_BETWEEN_DONATIONS;
             }
 
             // Replace the address property with the updated values
             return {
                 ...user.toObject(), // Convert Mongoose document to plain JavaScript object
-                isAvailable: user.isAvailable,
+                isAvailable: isAvailable,
                 totalDonation: userDonations.length,
                 address: {
                     division: getDivision.name ?? "",

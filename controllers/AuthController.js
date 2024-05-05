@@ -9,6 +9,7 @@ const DonationModel = require("../models/DonationModel");
 const { storeOTP } = require("./OtpController");
 const { generateOTP } = require("../_utils/_helper/OtpGenerate");
 const { passwordResetOtpSMS, registerSMS, registrationSuccessSMS } = require("../_utils/_helper/smsServices");
+const MIN_DAYS_BETWEEN_DONATIONS = 90;
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -24,6 +25,14 @@ const registerUser = asyncHandler(async (req, res) => {
             message: `Please provide all required fields: ${missingFields.join(', ')}`,
         });
         return;
+    }
+
+    // Validate mobile number length
+    if (requestBody.mobile && requestBody.mobile.length !== 11) {
+        return res.status(400).json({
+            status: 400,
+            message: "Mobile number must be 11 digits long.",
+        });
     }
 
     // Check if user already exists with Approved
@@ -229,17 +238,13 @@ const logout = asyncHandler(async (req, res) => {
 const updateUserProfile = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const requestBody = req.body;
-    // const requiredFields = ['name', 'mobile', 'dob', 'blood_group', 'is_weight_50kg', 'address', 'password'];
-    // Ensure required fields are provided
-    const requiredFields = ['name', 'mobile', 'dob', 'blood_group', 'is_weight_50kg', 'address'];
-    const missingFields = requiredFields.filter(field => !requestBody[field]);
 
-    if (missingFields.length > 0) {
-        res.status(400).json({
+    // Validate mobile number length
+    if (requestBody.mobile && requestBody.mobile.length !== 11) {
+        return res.status(400).json({
             status: 400,
-            message: `Please provide all required fields: ${missingFields.join(', ')}`,
+            message: "Mobile number must be 11 digits long.",
         });
-        return;
     }
 
     try {
@@ -256,8 +261,9 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
         // Check if user already exists
         const userExistsWithNumber = await Auth.findOne({ mobile: requestBody.mobile });
+        const userExistsWithEmail = await Auth.findOne({ mobile: requestBody.email });
 
-        if (userExistsWithNumber) {
+        if (user.mobile !== requestBody.mobile && userExistsWithNumber) {
             res.status(400).json({
                 status: 400,
                 message: "This mobile number is already associated with another account.",
@@ -265,17 +271,37 @@ const updateUserProfile = asyncHandler(async (req, res) => {
             return;
         }
 
+        if (user.email !== requestBody.email && userExistsWithEmail) {
+            res.status(400).json({
+                status: 400,
+                message: "This email is already associated with another account.",
+            });
+            return;
+        }
+
         // Update user profile fields
-        user.name = requestBody.name;
-        user.mobile = requestBody.mobile;
-        user.dob = requestBody.dob;
-        user.blood_group = requestBody.blood_group;
-        user.is_weight_50kg = requestBody.is_weight_50kg;
-        user.address = requestBody.address;
-        user.occupation = requestBody.occupation;
+        user.name = requestBody.name || user.name;
+        user.mobile = requestBody.mobile || user.mobile;
+        user.email = requestBody.email || user.email;
+        user.dob = requestBody.dob || user.dob;
+        user.blood_group = requestBody.blood_group || user.blood_group;
+        user.is_weight_50kg = requestBody.is_weight_50kg || user.is_weight_50kg;
+        user.address = requestBody.address || user.address;
+        user.occupation = requestBody.occupation || user.occupation;
+
 
         // Save the updated user
         await user.save();
+
+        const currentDate = new Date();
+        const lastDonationDate = user.last_donation;
+        let isAvailable = true;
+
+        if (lastDonationDate !== null) {
+            const daysSinceLastDonation = (currentDate - lastDonationDate) / (1000 * 60 * 60 * 24);
+            isAvailable = daysSinceLastDonation > MIN_DAYS_BETWEEN_DONATIONS;
+        }
+
 
         res.status(200).json({
             status: 200,
@@ -289,7 +315,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
                 occupation: user.occupation,
                 blood_group: user.blood_group,
                 is_weight_50kg: user.is_weight_50kg,
-                isAvailable: user.isAvailable,
+                isAvailable: isAvailable,
                 isActive: user.isActive,
                 last_donation: user.last_donation,
                 pic: user.pic,
@@ -357,6 +383,15 @@ const getProfileData = asyncHandler(async (req, res) => {
         const getDistrict = await getDistrictByID(user.address.district_id);
         const getArea = await getAreaByID(user.address.area_id);
         const totalDonation = await DonationModel.countDocuments({ donar_id: userId });
+        // const lastDonationDate = user.last_donation;
+        const currentDate = new Date();
+        const lastDonationDate = user.last_donation;
+        let isAvailable = true;
+
+        if (lastDonationDate !== null) {
+            const daysSinceLastDonation = (currentDate - lastDonationDate) / (1000 * 60 * 60 * 24);
+            isAvailable = daysSinceLastDonation > MIN_DAYS_BETWEEN_DONATIONS;
+        }
 
         res.status(200).json({
             status: 200,
@@ -374,6 +409,7 @@ const getProfileData = asyncHandler(async (req, res) => {
                 is_weight_50kg: user.is_weight_50kg,
                 last_donation: user.last_donation,
                 totalDonation: totalDonation,
+                isAvailable: isAvailable,
                 address: {
                     division: getDivision.name ?? "",
                     district: getDistrict.name ?? "",
