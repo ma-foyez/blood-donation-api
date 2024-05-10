@@ -172,11 +172,9 @@ const deleteDonationData = asyncHandler(async (req, res) => {
         );
 
         // Update last_donation in the Auth model with the nearest donation date
-        if (nearestDonation) {
-            const user = await Auth.findById(auth_user);
-            user.last_donation = nearestDonation.donation_date;
-            await user.save();
-        }
+        const user = await Auth.findById(auth_user);
+        user.last_donation = nearestDonation ? nearestDonation.donation_date : null;
+        await user.save();
 
         res.status(200).json({
             status: 200,
