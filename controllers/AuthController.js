@@ -412,8 +412,11 @@ const getProfileData = asyncHandler(async (req, res) => {
                 isAvailable: isAvailable,
                 address: {
                     division: getDivision.name ?? "",
+                    division_id: user.address.division_id,
                     district: getDistrict.name ?? "",
+                    district_id: user.address.district_id,
                     area: getArea.name ?? "",
+                    area_id: user.address.area_id,
                     post_office: user.address.post_office,
                 },
                 pic: user.pic,
@@ -465,35 +468,6 @@ const changePasswordByMatchingOtp = asyncHandler(async (req, res) => {
     const { mobile, password } = req.body;
     const userExistsWithNumber = await Auth.findOne({ mobile: mobile });
     // const findOtpByMobile = await OtpModel.findOne({ mobile: mobile, otp: otp });
-
-    // if (!findOtpByMobile) {
-    //     res.status(400).json({
-    //         status: 400,
-    //         message: "OTP doesn't match!",
-    //     });
-    //     return;
-    // }
-
-    // // Check if OTP has expired
-    // const currentTime = new Date();
-
-    // if (process.env.SMS_MODE === 'prod' && findOtpByMobile.expire_time < currentTime) {
-    //     return res.status(400).json({
-    //         status: 400,
-    //         message: "OTP has expired!",
-    //     });
-    // } else {
-    //     // Find all OTPs with the same value and check if any of them are still valid
-    //     const similarOtps = await OtpModel.find({ otp: otp });
-    //     const validOtps = similarOtps.filter(otp => otp.expire_time > currentTime);
-
-    //     if (validOtps.length === 0) {
-    //         return res.status(400).json({
-    //             status: 400,
-    //             message: "OTP has expired!",
-    //         });
-    //     }
-    // }
 
     // If OTP is valid and not expired, update the password
     if (userExistsWithNumber) {
