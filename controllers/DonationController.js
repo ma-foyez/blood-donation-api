@@ -2,7 +2,7 @@ const asyncHandler = require("express-async-handler");
 const Auth = require("../models/AuthModal");
 const Donation = require("../models/DonationModel");
 
-const MIN_DAYS_BETWEEN_DONATIONS = 90;
+const MIN_DAYS_BETWEEN_DONATIONS = 120;
 const MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
 
 const errorResponse = (res, status, message) => {

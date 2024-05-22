@@ -1,7 +1,8 @@
 const asyncHandler = require("express-async-handler");
 const Auth = require("../models/AuthModal");
 const Donation = require("../models/DonationModel");
-
+const MIN_DAYS_BETWEEN_DONATIONS = 120;
+const MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
 /**
  * Store New Donation History
  */
@@ -61,7 +62,7 @@ const storeNewDonationHistory = asyncHandler(async (req, res) => {
         positiveDaysSinceLastDonation = daysSinceLastDonation < 0 ? Math.abs(daysSinceLastDonation)
             : daysSinceLastDonation;
 
-        if (positiveDaysSinceLastDonation < 90) {
+        if (positiveDaysSinceLastDonation < MIN_DAYS_BETWEEN_DONATIONS) {
             res.status(400);
             throw new Error("Your donation is not acceptable. It's too soon since your last donation.");
         }

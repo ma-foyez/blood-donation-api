@@ -3,7 +3,7 @@ const Auth = require("../models/AuthModal");
 const { getDivisionByID, getDistrictByID, getAreaByID } = require("../_utils/_helper/getAddressById");
 const DonationModel = require("../models/DonationModel");
 
-const MIN_DAYS_BETWEEN_DONATIONS = 90;
+const MIN_DAYS_BETWEEN_DONATIONS = 120;
 const MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
 
 /**

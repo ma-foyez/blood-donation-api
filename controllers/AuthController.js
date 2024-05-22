@@ -9,7 +9,7 @@ const DonationModel = require("../models/DonationModel");
 const { storeOTP } = require("./OtpController");
 const { generateOTP } = require("../_utils/_helper/OtpGenerate");
 const { passwordResetOtpSMS, registerSMS, registrationSuccessSMS } = require("../_utils/_helper/smsServices");
-const MIN_DAYS_BETWEEN_DONATIONS = 90;
+const MIN_DAYS_BETWEEN_DONATIONS = 120;
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -49,7 +49,8 @@ const registerUser = asyncHandler(async (req, res) => {
         });
         return;
     }
-    if (userExitsWithEmail) {
+    
+    if (requestBody.email !== "" && userExitsWithEmail) {
         res.status(400).json({
             status: 400,
             message: "You already have an account with this email.",
@@ -499,5 +500,37 @@ const changePasswordByMatchingOtp = asyncHandler(async (req, res) => {
     }
 
 })
+
+// Do not need to apply anymore
+async function removeDuplicateEmptyEmails() {
+    try {
+        // Find users with empty email strings
+        const usersWithEmptyEmails = await Auth.find({ email: "" });
+
+        if (usersWithEmptyEmails.length > 1) {
+            // Skip the first one and update the rest
+            for (let i = 1; i < usersWithEmptyEmails.length; i++) {
+                await Auth.updateOne({ _id: usersWithEmptyEmails[i]._id }, { $unset: { email: 1 } });
+            }
+        }
+        console.log("Duplicate empty emails removed.");
+    } catch (error) {
+        console.error("Error removing duplicate empty emails:", error);
+    } finally {
+        mongoose.disconnect();
+    }
+}
+
+// This method only for remove unique index for email,
+async function dropEmailUniqueIndex() {
+    try {
+        await Auth.collection.dropIndex("email_1");
+        console.log("Unique index on email dropped.");
+    } catch (error) {
+        console.error("Error dropping unique index on email:", error);
+    } finally {
+        mongoose.disconnect();
+    }
+}
 
 module.exports = { registerUser, OtpMatchForRegister, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp }
