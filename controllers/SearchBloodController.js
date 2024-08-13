@@ -12,7 +12,7 @@ const MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
 const searchBloods = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 100000;
 
         const { division_id, district_id, area_id, post_office, blood_group } = req.query;
 

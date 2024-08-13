@@ -113,7 +113,7 @@ const storeNewDonationHistory = asyncHandler(async (req, res) => {
 const getAllDonationHistory = asyncHandler(async (req, res) => {
     const auth_user = req.user.id;
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 1000000;
     const status = req.query.status;
     const skip = (page - 1) * limit;
 
