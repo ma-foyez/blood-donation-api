@@ -11,10 +11,6 @@ const { generateOTP } = require("../_utils/_helper/OtpGenerate");
 const { passwordResetOtpSMS, registerSMS, registrationSuccessSMS } = require("../_utils/_helper/smsServices");
 const MIN_DAYS_BETWEEN_DONATIONS = 120;
 
-/**
- * Register user with SMS service
- */
-
 // const registerUser = asyncHandler(async (req, res) => {
 //     const requestBody = req.body;
 
@@ -41,7 +37,6 @@ const MIN_DAYS_BETWEEN_DONATIONS = 120;
 //     // Check if user already exists with Approved
 //     const userExistsWithNumber = await Auth.findOne({ mobile: requestBody.mobile, isApproved: true });
 //     const userExitsWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: true });
-
 //     const unApprovedWithMobile = await Auth.findOne({ mobile: requestBody.mobile, isApproved: false });
 //     const unApprovedWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: false });
 
@@ -52,7 +47,7 @@ const MIN_DAYS_BETWEEN_DONATIONS = 120;
 //         });
 //         return;
 //     }
-    
+
 //     if (requestBody.email !== "" && userExitsWithEmail) {
 //         res.status(400).json({
 //             status: 400,
@@ -64,30 +59,62 @@ const MIN_DAYS_BETWEEN_DONATIONS = 120;
 //     // If unapproved user exists with the provided mobile or email, delete it
 //     if (unApprovedWithMobile) {
 //         const removedUser = await Auth.findOneAndDelete({ mobile: requestBody.mobile, isApproved: false });
-//         // console.log("Unapproved user with mobile deleted:", removedUser);
 //     }
 //     if (unApprovedWithEmail) {
 //         const removedUser = await Auth.findOneAndDelete({ email: requestBody.email, isApproved: false });
-//         // console.log("Unapproved user with email deleted:", removedUser);
 //     }
-//     // If user exists with the provided mobile number, call the storeOTP method
-//     const otp = generateOTP();
-//     const data = { mobile: requestBody.mobile, otp: process.env.SMS_MODE === 'prod' ? otp : process.env.TEST_OTP };
+
 //     try {
 //         const user = await Auth.create(requestBody);
 
 //         if (user) {
-//             const isStoreOTP = await storeOTP(data, res);
-//             if (process.env.SMS_MODE === 'prod' && isStoreOTP.status(200)) {
-//                 registerSMS(requestBody.mobile, requestBody.name, otp);
-//             }
+
+//             const getDivision = await getDivisionByID(user.address.division_id);
+//             const getDistrict = await getDistrictByID(user.address.district_id);
+//             const getArea = await getAreaByID(user.address.area_id);
+
+//             // Generate token, save it to user, and save the user
+//             const token = generateToken(user._id);
+//             user.tokens.push({ token });
+//             user.isApproved = true;
+//             await user.save();
+
+//             // if (process.env.SMS_MODE === 'prod') {
+//             //     registrationSuccessSMS(user.mobile, user.name)
+//             // }
+
+//             res.status(200).json({
+//                 status: 200,
+//                 message: "You have been successfully created a new account",
+//                 data: {
+//                     _id: user._id,
+//                     name: user.name,
+//                     mobile: user.mobile,
+//                     email: user.email,
+//                     dob: user.dob,
+//                     occupation: user.occupation,
+//                     blood_group: user.blood_group,
+//                     is_weight_50kg: user.is_weight_50kg,
+//                     isAvailable: user.isAvailable,
+//                     isActive: user.isActive,
+//                     last_donation: user.last_donation,
+//                     pic: user.pic,
+//                     address: {
+//                         division: getDivision.name ?? "",
+//                         district: getDistrict.name ?? "",
+//                         area: getArea.name ?? "",
+//                         post_office: user.address.post_office,
+//                     },
+//                     access_token: token,
+//                 },
+
+//             });
 //         } else {
 //             res.status(400).json({
 //                 status: 400,
 //                 message: "Failed to create a new user",
 //             });
 //         }
-//         // If OTP is successfully stored and the response status is 200, send SMS
 
 //     } catch (error) {
 //         console.error("Error occurred while storing OTP:", error);
@@ -98,120 +125,113 @@ const MIN_DAYS_BETWEEN_DONATIONS = 120;
 //     }
 // });
 
-
+/**
+ * Register user with Email service
+ */
 const registerUser = asyncHandler(async (req, res) => {
-    const requestBody = req.body;
-
-    // Ensure required fields are provided
-    const requiredFields = ['name', 'mobile', 'dob', 'blood_group', 'is_weight_50kg', 'address', 'password'];
-    const missingFields = requiredFields.filter(field => !requestBody[field]);
+    const { name, mobile, email, dob, blood_group, is_weight_50kg, address, password, } =
+        req.body;
+    // Validate required fields
+    const requiredFields = {
+        name,
+        mobile,
+        email,
+        dob,
+        blood_group,
+        is_weight_50kg,
+        address,
+        password
+    };
+    const missingFields = Object.keys(requiredFields).filter(
+        (field) => !requiredFields[field]
+    );
 
     if (missingFields.length > 0) {
-        res.status(400).json({
+        return res.status(400).json({
             status: 400,
-            message: `Please provide all required fields: ${missingFields.join(', ')}`,
+            message: `Missing required fields: ${missingFields.join(", ")}`,
         });
-        return;
     }
 
     // Validate mobile number length
-    if (requestBody.mobile && requestBody.mobile.length !== 11) {
+    if (mobile.length !== 11) {
         return res.status(400).json({
             status: 400,
             message: "Mobile number must be 11 digits long.",
         });
     }
 
-    // Check if user already exists with Approved
-    const userExistsWithNumber = await Auth.findOne({ mobile: requestBody.mobile, isApproved: true });
-    const userExitsWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: true });
-    const unApprovedWithMobile = await Auth.findOne({ mobile: requestBody.mobile, isApproved: false });
-    const unApprovedWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: false });
+    // Check for existing user (Approved)
+    const [userExistsWithNumber, userExistsWithEmail] = await Promise.all([
+        Auth.findOne({ mobile, isApproved: true }),
+        Auth.findOne({ email, isApproved: true }),
+    ]);
 
     if (userExistsWithNumber) {
-        res.status(400).json({
+        return res.status(400).json({
             status: 400,
             message: "You already have an account with this number.",
         });
-        return;
     }
-    
-    if (requestBody.email !== "" && userExitsWithEmail) {
-        res.status(400).json({
+
+    if (email && userExistsWithEmail) {
+        return res.status(400).json({
             status: 400,
             message: "You already have an account with this email.",
         });
-        return;
     }
 
-    // If unapproved user exists with the provided mobile or email, delete it
-    if (unApprovedWithMobile) {
-        const removedUser = await Auth.findOneAndDelete({ mobile: requestBody.mobile, isApproved: false });
-    }
-    if (unApprovedWithEmail) {
-        const removedUser = await Auth.findOneAndDelete({ email: requestBody.email, isApproved: false });
-    }
+    // Delete unapproved users if they exist
+    const [unApprovedWithMobile, unApprovedWithEmail] = await Promise.all([
+        Auth.findOneAndDelete({ mobile, isApproved: false }),
+        email ? Auth.findOneAndDelete({ email, isApproved: false }) : null,
+    ]);
+
+    // if (unApprovedWithMobile) {
+    //     console.log("Unapproved user with mobile deleted:", unApprovedWithMobile);
+    // }
+    // if (unApprovedWithEmail) {
+    //     console.log("Unapproved user with email deleted:", unApprovedWithEmail);
+    // }
+
+    // Generate and store OTP
+    const otp =
+        process.env.SMS_MODE === "prod" ? generateOTP() : process.env.TEST_OTP;
+    const otpData = { email, otp };
 
     try {
-        const user = await Auth.create(requestBody);
+        const user = await Auth.create({
+            name,
+            mobile,
+            email,
+            dob,
+            blood_group,
+            is_weight_50kg,
+            address,
+            password
+        });
 
         if (user) {
-
-            const getDivision = await getDivisionByID(user.address.division_id);
-            const getDistrict = await getDistrictByID(user.address.district_id);
-            const getArea = await getAreaByID(user.address.area_id);
-    
-            // Generate token, save it to user, and save the user
-            const token = generateToken(user._id);
-            user.tokens.push({ token });
-            user.isApproved = true;
-            await user.save();
-    
-            // if (process.env.SMS_MODE === 'prod') {
-            //     registrationSuccessSMS(user.mobile, user.name)
-            // }
-    
-            res.status(200).json({
-                status: 200,
-                message: "You have been successfully created a new account",
-                data: {
-                    _id: user._id,
-                    name: user.name,
-                    mobile: user.mobile,
-                    email: user.email,
-                    dob: user.dob,
-                    occupation: user.occupation,
-                    blood_group: user.blood_group,
-                    is_weight_50kg: user.is_weight_50kg,
-                    isAvailable: user.isAvailable,
-                    isActive: user.isActive,
-                    last_donation: user.last_donation,
-                    pic: user.pic,
-                    address: {
-                        division: getDivision.name ?? "",
-                        district: getDistrict.name ?? "",
-                        area: getArea.name ?? "",
-                        post_office: user.address.post_office,
-                    },
-                    access_token: token,
-                },
-    
+            await storeOTP(otpData, res);
+            return res.status(201).json({
+                status: 201,
+                message: "User registered successfully. OTP sent.",
             });
         } else {
-            res.status(400).json({
+            return res.status(400).json({
                 status: 400,
                 message: "Failed to create a new user",
             });
         }
-
     } catch (error) {
-        console.error("Error occurred while storing OTP:", error);
-        res.status(500).json({
+        console.error("Error occurred while registering user:", error);
+        return res.status(500).json({
             status: 500,
             message: "Internal server error",
         });
     }
 });
+
 
 const OtpMatchForRegister = asyncHandler(async (req, res) => {
     // Create a new user with all the provided fields
@@ -227,7 +247,7 @@ const OtpMatchForRegister = asyncHandler(async (req, res) => {
             message: "OTP doesn't match!",
         });
         return;
-    } 
+    }
 
     // Check if OTP has expired
     const currentTime = new Date();
