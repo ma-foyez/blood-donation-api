@@ -9,6 +9,7 @@ const OtpSChema = mongoose.Schema(
   },
   {
     collection: "otps",
+    timestamps: true,
     versionKey: false,
   }
 );

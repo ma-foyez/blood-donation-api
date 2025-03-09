@@ -7,6 +7,7 @@ const {
   regenerateOtpMessage,
 } = require("../_utils/_helper/emailService"); // Replace SMS service with email service
 const maskEmail = require("../_utils/_helper/maskEmail");
+const { keys } = require("../_utils/keys");
 const { generateOTP } = require("../_utils/_helper/OtpGenerate");
 
 const storeOTP = asyncHandler(async (req, res) => {
@@ -36,7 +37,7 @@ const storeOTP = asyncHandler(async (req, res) => {
 
   // Set expiration time to 5 minutes from now
   const expireTime = new Date();
-  expireTime.setMinutes(expireTime.getMinutes() + 5);
+  expireTime.setMinutes(expireTime.getMinutes() + keys.OTP_VALIDITY_DURATION_MINUTES);
 
   const storeData = {
     email,

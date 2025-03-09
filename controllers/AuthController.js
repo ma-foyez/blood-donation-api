@@ -56,7 +56,7 @@ const registerUser = asyncHandler(async (req, res) => {
             return res.status(400).json({ status: 400, message: "Failed to create a new user" });
         }
 
-        const otpResponse = await storeOTP({ mobile, otp }, res);
+        const otpResponse = await storeOTP({ email, otp }, res);
         return res.status(201).json({
             status: 201,
             message: otpResponse.success
