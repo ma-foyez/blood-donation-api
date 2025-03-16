@@ -6,7 +6,7 @@ dotenv.config();
 
 // Configure the transporter
 const transporter = nodemailer.createTransport({
-  service: "gmail", 
+  service: "gmail",
   // port: 587,
   // secure: true,
   auth: {
@@ -73,4 +73,41 @@ const regenerateOtpMessage = async (email, otp) => {
   }
 };
 
-module.exports = { sendEmail, regenerateOtpMessage };
+
+/**
+ * Send registration success email
+ * @param {object} user - The registered user object.
+ */
+const generateRegistrationSuccessMessage = async (user) => {
+  try {
+    const mailOptions = {
+      from: process.env.SMTP_MAIL,
+      to: user.email,
+      subject: "Welcome to Blood BD - Registration Successful",
+      text: `Dear ${user.name},\n\nCongratulations! Your registration on Blood BD is successful.\n\nYou can now log in and access our platform to contribute to life-saving efforts. Thank you for joining us!\n\nIf you have any questions, feel free to reach out.\n\nBest regards,\nBlood BD Team`, // Plain text version
+      html: `
+        <div style="font-family: Arial, sans-serif; text-align: center; color: #333;">
+          <h1 style="color: #2C3E50;">Welcome to Blood BD!</h1>
+          <p>Dear <strong>${user.name}</strong>,</p>
+          <p>We’re thrilled to have you on board! Your registration has been successfully completed.</p>
+          <p>You can now log in to your account and start contributing to our life-saving community.</p>
+          <div style="margin: 20px 0;">
+            <a href="${process.env.APP_URL}/login" style="display: inline-block; padding: 10px 20px; font-size: 16px; font-weight: bold; color: #fff; background-color: #28a745; text-decoration: none; border-radius: 5px;">Log In Now</a>
+          </div>
+          <p>If you have any questions, feel free to reach out to our support team.</p>
+          <hr style="margin: 20px 0;">
+          <p style="font-size: 12px; color: #999;">Best regards,<br><strong>Blood BD Team</strong></p>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Registration success email sent to ${user.email}: ${info.response}`);
+    return { success: true, message: "Registration success email sent successfully" };
+  } catch (error) {
+    console.error("Error sending registration success email:", error);
+    return { success: false, message: error.message };
+  }
+};
+
+module.exports = { sendEmail, regenerateOtpMessage, generateRegistrationSuccessMessage };

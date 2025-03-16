@@ -23,7 +23,7 @@ const storeOTP = asyncHandler(async (req, res) => {
   // Check if an OTP exists for the provided email
   const existingOTP = await OtpModel.findOne({ email });
 
-  if (existingOTP && existingOTP.expire_time > new Date()) {
+  if (existingOTP && existingOTP.expire_time > new Date() && existingOTP.is_verified === false) {
     // Calculate the remaining time until OTP expiration
     const remainingTime = Math.ceil(
       (existingOTP.expire_time - new Date()) / (1000 * 60)
@@ -42,11 +42,21 @@ const storeOTP = asyncHandler(async (req, res) => {
   const storeData = {
     email,
     otp,
+    is_verified: false,
     expire_time: expireTime,
   };
 
   try {
-    const otpStored = await OtpModel.create(storeData);
+    // const otpStored = await OtpModel.create(storeData);
+    let otpStored
+
+    if (existingOTP) {
+      // If OTP exists (expired or not), update it instead of creating a new one
+      otpStored = await OtpModel.findOneAndUpdate({ email }, storeData, { new: true },)
+    } else {
+      // If no OTP exists for this email, create a new one
+      otpStored = await OtpModel.create(storeData)
+    }
     if (otpStored) {
       regenerateOtpMessage(otpStored.email, otpStored.otp);
       res.status(200).json({

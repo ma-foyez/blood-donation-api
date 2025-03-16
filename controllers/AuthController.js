@@ -9,6 +9,7 @@ const DonationModel = require("../models/DonationModel");
 const { storeOTP } = require("./OtpController");
 const { generateOTP } = require("../_utils/_helper/OtpGenerate");
 const { passwordResetOtpSMS, registerSMS, registrationSuccessSMS } = require("../_utils/_helper/smsServices");
+const { generateRegistrationSuccessMessage } = require("../_utils/_helper/emailService");
 const MIN_DAYS_BETWEEN_DONATIONS = 120;
 
 /**
@@ -73,51 +74,63 @@ const registerUser = asyncHandler(async (req, res) => {
 
 
 const OtpMatchForRegister = asyncHandler(async (req, res) => {
-    // Create a new user with all the provided fields
-    // const user = await Auth.create(requestBody);
-
-    const { mobile, otp } = req.body;
-    const user = await Auth.findOne({ mobile: mobile });
-    const findOtpByMobile = await OtpModel.findOne({ mobile: mobile, otp: otp });
-
-    if (!findOtpByMobile) {
-        res.status(400).json({
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+        return res.status(400).json({
             status: 400,
-            message: "OTP doesn't match!",
+            message: "Email and OTP are required.",
         });
-        return;
     }
 
-    // Check if OTP has expired
-    const currentTime = new Date();
-    if (findOtpByMobile.expire_time < currentTime) {
-        res.status(400).json({
-            status: 400,
-            message: "OTP has expired!",
-        });
-        return;
-    }
+    try {
+        const user = await Auth.findOne({ email });
+        const findOtp = await OtpModel.findOne({ email, otp });
 
+        if (!findOtp) {
+            return res.status(400).json({
+                status: 400,
+                message: "Invalid OTP. Please enter the correct OTP.",
+            });
+        }
 
-    if (user) {
+        if (findOtp.expire_time < new Date()) {
+            return res.status(400).json({
+                status: 400,
+                message: "OTP has expired. Please request a new OTP.",
+            });
+        }
 
-        const getDivision = await getDivisionByID(user.address.division_id);
-        const getDistrict = await getDistrictByID(user.address.district_id);
-        const getArea = await getAreaByID(user.address.area_id);
+        if (!user) {
+            return res.status(400).json({
+                status: 400,
+                message: "User not found. Please register first.",
+            });
+        }
 
-        // Generate token, save it to user, and save the user
+        // Fetch division, district, and area details
+        const [division, district, area] = await Promise.all([
+            getDivisionByID(user.address.division_id),
+            getDistrictByID(user.address.district_id),
+            getAreaByID(user.address.area_id),
+        ]);
+
+        // Generate authentication token
         const token = generateToken(user._id);
         user.tokens.push({ token });
         user.isApproved = true;
+        findOtp.is_verified = true;
         await user.save();
+        await findOtp.save();
 
-        if (process.env.SMS_MODE === 'prod') {
-            registrationSuccessSMS(user.mobile, user.name)
+        // Send success SMS in production mode
+        if (process.env.SMS_MODE === "prod") {
+            // registrationSuccessSMS(user.email, user.name);
+            generateRegistrationSuccessMessage(user);
         }
 
         res.status(200).json({
             status: 200,
-            message: "You have been successfully created a new account",
+            message: "Account successfully created.",
             data: {
                 _id: user._id,
                 name: user.name,
@@ -132,22 +145,22 @@ const OtpMatchForRegister = asyncHandler(async (req, res) => {
                 last_donation: user.last_donation,
                 pic: user.pic,
                 address: {
-                    division: getDivision.name ?? "",
-                    district: getDistrict.name ?? "",
-                    area: getArea.name ?? "",
+                    division: division?.name || "",
+                    district: district?.name || "",
+                    area: area?.name || "",
                     post_office: user.address.post_office,
                 },
                 access_token: token,
             },
-
         });
-    } else {
-        res.status(400).json({
-            status: 400,
-            message: "Failed to create a new user",
+    } catch (error) {
+        res.status(500).json({
+            status: 500,
+            message: "An unexpected error occurred. Please try again later.",
         });
     }
-})
+});
+
 
 const authUser = asyncHandler(async (req, res) => {
     const { mobile, password } = req.body;

@@ -16,7 +16,7 @@ AuthRouter.post("/password-reset-request", requestPasswordReset);
 AuthRouter.post("/password-reset", changePasswordByMatchingOtp);
 AuthRouter.post("/register-otp-match", OtpMatchForRegister);
 AuthRouter.post("/resent-otp", regenerateOtp);
-AuthRouter.post("/otp-match", matchOtp);
+AuthRouter.post("/otp-match", OtpMatchForRegister);
 
 
 module.exports = AuthRouter;
