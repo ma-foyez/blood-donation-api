@@ -35,8 +35,6 @@ const AuthSchema = mongoose.Schema(
             },
         },
         tokens: [{ token: { type: String, required: true } }],
-        created_at: { type: Date, default: Date.now, required: true },
-        updated_at: { type: Date, default: null },
     },
     {
         collection: "users",

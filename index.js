@@ -15,6 +15,7 @@ const SearchDonar = require("./routes/SearchBloodRoute");
 dotenv.config();
 
 const PORT = process.env.PORT || 4200;
+const HOST = process.env.HOST || '192.168.10.124';
 const app = express();
 app.use(cors())
 connectDB();
@@ -33,4 +34,8 @@ app.use('/v1', SearchDonar);
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(PORT, console.log(`Server start on PORT ${PORT}`.yellow.bold));
+app.listen(PORT, HOST, () => {
+    console.log(`Server running at http://${HOST}:${PORT}`);
+});
+
+// app.listen(PORT, console.log(`Server start on PORT ${PORT}`.yellow.bold));
