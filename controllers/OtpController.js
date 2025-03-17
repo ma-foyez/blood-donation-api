@@ -4,7 +4,7 @@ const OtpModel = require("../models/OtpModel");
 const Auth = require("../models/AuthModal");
 const {
   sendEmail,
-  regenerateOtpMessage,
+  regenerateRegisterOTPMessage,
 } = require("../_utils/_helper/emailService"); // Replace SMS service with email service
 const maskEmail = require("../_utils/_helper/maskEmail");
 const { keys } = require("../_utils/keys");
@@ -20,7 +20,7 @@ const storeOTP = asyncHandler(async (req, res) => {
     return;
   }
 
-  // Check if an OTP exists for the provided email
+  const userExistsWithEmail = await Auth.findOne({ email });
   const existingOTP = await OtpModel.findOne({ email });
 
   if (existingOTP && existingOTP.expire_time > new Date() && existingOTP.is_verified === false) {
@@ -58,7 +58,12 @@ const storeOTP = asyncHandler(async (req, res) => {
       otpStored = await OtpModel.create(storeData)
     }
     if (otpStored) {
-      regenerateOtpMessage(otpStored.email, otpStored.otp);
+      // if (userExistsWithEmail && userExistsWithEmail.isApproved) {
+      //   generateResetPasswordOTPMessage(otpStored.email, otpStored.otp);
+      // } else {
+      //   regenerateRegisterOTPMessage(otpStored.email, otpStored.otp);
+      // }
+       generateResetPasswordOTPMessage(otpStored.email, otpStored.otp);
       res.status(200).json({
         status: 200,
         expire_time: otpStored.expire_time,
@@ -78,39 +83,42 @@ const storeOTP = asyncHandler(async (req, res) => {
   }
 });
 
-const regenerateOtp = asyncHandler(async (req, res) => {
-  const { email } = req.body;
-  const userExistsWithEmail = await Auth.findOne({ email });
+// const regenerateOtp = asyncHandler(async (req, res) => {
+//   const { email } = req.body;
+//   const userExistsWithEmail = await Auth.findOne({ email });
 
-  if (!userExistsWithEmail) {
-    res.status(400).json({
-      status: 400,
-      message: "User doesn't exist with this email!",
-    });
-    return;
-  }
+//   console.log('userExistsWithEmail :>> ', userExistsWithEmail);
+//   if (!userExistsWithEmail) {
+//     res.status(400).json({
+//       status: 400,
+//       message: "User doesn't exist with this email!",
+//     });
+//     return;
+//   }
 
-  // If user exists with the provided email, call the storeOTP method
-  const otp = generateOTP();
-  const data = {
-    email,
-    otp: process.env.SMS_MODE === "prod" ? otp : process.env.TEST_OTP,
-  };
+//   // If user exists with the provided email, call the storeOTP method
+//   const otp = generateOTP();
+//   const data = {
+//     email,
+//     otp: process.env.SMS_MODE === "prod" ? otp : process.env.TEST_OTP,
+//   };
 
-  try {
-    const isStoreOTP = await storeOTP({ body: data }, res);
-    // If OTP is successfully stored, send the email
-    // if (process.env.SMS_MODE === "prod" && isStoreOTP.status(200)) {
-    //   sendEmail(); // Update to send an email
-    // }
-  } catch (error) {
-    console.error("Error occurred while storing OTP:", error);
-    res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
+//   try {
+//     // const isStoreOTP = await storeOTP({ body: data }, res);
+//     const isStoreOTP = await storeOTP({ email, otp }, res);
+
+//     // If OTP is successfully stored, send the email
+//     if (process.env.SMS_MODE === "prod" && isStoreOTP.status(200)) {
+//       sendEmail(); // Update to send an email
+//     }
+//   } catch (error) {
+//     console.error("Error occurred while storing OTP:", error);
+//     res.status(500).json({
+//       status: 500,
+//       message: "Internal server error",
+//     });
+//   }
+// });
 
 const matchOtp = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
@@ -152,4 +160,4 @@ const matchOtp = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { storeOTP, regenerateOtp, matchOtp };
+module.exports = { storeOTP, matchOtp };

@@ -72,6 +72,34 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 
+const resendOTP = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const userExistsWithEmail = await Auth.findOne({ email });
+
+    if (!userExistsWithEmail) {
+        res.status(400).json({
+            status: 400,
+            message: "User doesn't exist with this email!",
+        });
+        return;
+    }
+    const otp = process.env.SMS_MODE === "prod" ? generateOTP() : process.env.TEST_OTP;
+    try {
+        // const isStoreOTP = await storeOTP({ body: data }, res);
+        const otpResponse = await storeOTP({ email, otp }, res);
+        console.log('otpResponse :>> ', otpResponse);
+        return res.status(201).json({
+            status: 201,
+           message: otpResponse.success
+                ? "User registered successfully. Please check your  messages for further instructions."
+                : "User registered successfully. If you do not receive a verification code, please try again later.",
+        });
+    } catch (error) {
+        console.error("Error occurred while registering user:", error);
+        return res.status(500).json({ status: 500, message: "Internal server error" });
+    }
+})
+
 
 const OtpMatchForRegister = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
@@ -163,9 +191,13 @@ const OtpMatchForRegister = asyncHandler(async (req, res) => {
 
 
 const authUser = asyncHandler(async (req, res) => {
-    const { mobile, password } = req.body;
+    const { username, password } = req.body;
 
-    const user = await Auth.findOne({ mobile, isApproved: true });
+    const user = await Auth.findOne({
+        $or: [{ email: username }, { mobile: username }],
+        isApproved: true
+    });
+    // const user = await Auth.findOne({ email, isApproved: true });
 
     if (user && (await user.matchPassword(password))) {
 
@@ -204,7 +236,7 @@ const authUser = asyncHandler(async (req, res) => {
         });
     } else {
         res.status(400);
-        throw new Error("Mobile or Password do not match!");
+        throw new Error("Invalid credentials. Please check your login details and try again.");
     }
 })
 
@@ -523,4 +555,4 @@ async function dropEmailUniqueIndex() {
     }
 }
 
-module.exports = { registerUser, OtpMatchForRegister, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp }
+module.exports = { registerUser, OtpMatchForRegister, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp, resendOTP }
