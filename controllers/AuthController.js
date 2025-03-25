@@ -9,256 +9,156 @@ const DonationModel = require("../models/DonationModel");
 const { storeOTP } = require("./OtpController");
 const { generateOTP } = require("../_utils/_helper/OtpGenerate");
 const { passwordResetOtpSMS, registerSMS, registrationSuccessSMS } = require("../_utils/_helper/smsServices");
+const { generateRegistrationSuccessMessage } = require("../_utils/_helper/emailService");
 const MIN_DAYS_BETWEEN_DONATIONS = 120;
 
 /**
- * Register user with SMS service
+ * Registers a new user, validates input, checks for existing accounts,  
+ * removes unapproved users, and sends an OTP for verification.
  */
-
-// const registerUser = asyncHandler(async (req, res) => {
-//     const requestBody = req.body;
-
-//     // Ensure required fields are provided
-//     const requiredFields = ['name', 'mobile', 'dob', 'blood_group', 'is_weight_50kg', 'address', 'password'];
-//     const missingFields = requiredFields.filter(field => !requestBody[field]);
-
-//     if (missingFields.length > 0) {
-//         res.status(400).json({
-//             status: 400,
-//             message: `Please provide all required fields: ${missingFields.join(', ')}`,
-//         });
-//         return;
-//     }
-
-//     // Validate mobile number length
-//     if (requestBody.mobile && requestBody.mobile.length !== 11) {
-//         return res.status(400).json({
-//             status: 400,
-//             message: "Mobile number must be 11 digits long.",
-//         });
-//     }
-
-//     // Check if user already exists with Approved
-//     const userExistsWithNumber = await Auth.findOne({ mobile: requestBody.mobile, isApproved: true });
-//     const userExitsWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: true });
-
-//     const unApprovedWithMobile = await Auth.findOne({ mobile: requestBody.mobile, isApproved: false });
-//     const unApprovedWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: false });
-
-//     if (userExistsWithNumber) {
-//         res.status(400).json({
-//             status: 400,
-//             message: "You already have an account with this number.",
-//         });
-//         return;
-//     }
-    
-//     if (requestBody.email !== "" && userExitsWithEmail) {
-//         res.status(400).json({
-//             status: 400,
-//             message: "You already have an account with this email.",
-//         });
-//         return;
-//     }
-
-//     // If unapproved user exists with the provided mobile or email, delete it
-//     if (unApprovedWithMobile) {
-//         const removedUser = await Auth.findOneAndDelete({ mobile: requestBody.mobile, isApproved: false });
-//         // console.log("Unapproved user with mobile deleted:", removedUser);
-//     }
-//     if (unApprovedWithEmail) {
-//         const removedUser = await Auth.findOneAndDelete({ email: requestBody.email, isApproved: false });
-//         // console.log("Unapproved user with email deleted:", removedUser);
-//     }
-//     // If user exists with the provided mobile number, call the storeOTP method
-//     const otp = generateOTP();
-//     const data = { mobile: requestBody.mobile, otp: process.env.SMS_MODE === 'prod' ? otp : process.env.TEST_OTP };
-//     try {
-//         const user = await Auth.create(requestBody);
-
-//         if (user) {
-//             const isStoreOTP = await storeOTP(data, res);
-//             if (process.env.SMS_MODE === 'prod' && isStoreOTP.status(200)) {
-//                 registerSMS(requestBody.mobile, requestBody.name, otp);
-//             }
-//         } else {
-//             res.status(400).json({
-//                 status: 400,
-//                 message: "Failed to create a new user",
-//             });
-//         }
-//         // If OTP is successfully stored and the response status is 200, send SMS
-
-//     } catch (error) {
-//         console.error("Error occurred while storing OTP:", error);
-//         res.status(500).json({
-//             status: 500,
-//             message: "Internal server error",
-//         });
-//     }
-// });
-
-
 const registerUser = asyncHandler(async (req, res) => {
-    const requestBody = req.body;
+    const { name, mobile, email = "", dob, blood_group, is_weight_50kg, address, password } = req.body;
 
-    // Ensure required fields are provided
-    const requiredFields = ['name', 'mobile', 'dob', 'blood_group', 'is_weight_50kg', 'address', 'password'];
-    const missingFields = requiredFields.filter(field => !requestBody[field]);
+    // Validate required fields
+    const requiredFields = { name, mobile, dob, blood_group, is_weight_50kg, address, password };
+    const missingFields = Object.keys(requiredFields).filter(field => !requiredFields[field]);
 
-    if (missingFields.length > 0) {
-        res.status(400).json({
-            status: 400,
-            message: `Please provide all required fields: ${missingFields.join(', ')}`,
-        });
-        return;
+    if (missingFields.length) {
+        return res.status(400).json({ status: 400, message: `Missing required fields: ${missingFields.join(", ")}` });
     }
 
     // Validate mobile number length
-    if (requestBody.mobile && requestBody.mobile.length !== 11) {
-        return res.status(400).json({
-            status: 400,
-            message: "Mobile number must be 11 digits long.",
-        });
+    if (mobile.length !== 11) {
+        return res.status(400).json({ status: 400, message: "Mobile number must be 11 digits long." });
     }
 
-    // Check if user already exists with Approved
-    const userExistsWithNumber = await Auth.findOne({ mobile: requestBody.mobile, isApproved: true });
-    const userExitsWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: true });
-    const unApprovedWithMobile = await Auth.findOne({ mobile: requestBody.mobile, isApproved: false });
-    const unApprovedWithEmail = await Auth.findOne({ email: requestBody.email, isApproved: false });
+    // Check for existing approved users
+    const [userExistsWithNumber, userExistsWithEmail] = await Promise.all([
+        Auth.findOne({ mobile, isApproved: true }),
+        email && Auth.findOne({ email, isApproved: true }),
+    ]);
 
-    if (userExistsWithNumber) {
-        res.status(400).json({
-            status: 400,
-            message: "You already have an account with this number.",
-        });
-        return;
-    }
-    
-    if (requestBody.email !== "" && userExitsWithEmail) {
-        res.status(400).json({
-            status: 400,
-            message: "You already have an account with this email.",
-        });
-        return;
-    }
+    if (userExistsWithNumber) return res.status(400).json({ status: 400, message: "You already have an account with this number." });
+    if (email && userExistsWithEmail) return res.status(400).json({ status: 400, message: "You already have an account with this email." });
 
-    // If unapproved user exists with the provided mobile or email, delete it
-    if (unApprovedWithMobile) {
-        const removedUser = await Auth.findOneAndDelete({ mobile: requestBody.mobile, isApproved: false });
-    }
-    if (unApprovedWithEmail) {
-        const removedUser = await Auth.findOneAndDelete({ email: requestBody.email, isApproved: false });
-    }
+    // Delete unapproved users if they exist
+    await Promise.all([
+        Auth.findOneAndDelete({ mobile, isApproved: false }),
+        email && Auth.findOneAndDelete({ email, isApproved: false }),
+    ]);
+
+    // Generate OTP
+    const otp = process.env.SMS_MODE === "prod" ? generateOTP() : process.env.TEST_OTP;
 
     try {
-        const user = await Auth.create(requestBody);
+        const user = await Auth.create({ name, mobile, email, dob, blood_group, is_weight_50kg, address, password });
 
-        if (user) {
-
-            const getDivision = await getDivisionByID(user.address.division_id);
-            const getDistrict = await getDistrictByID(user.address.district_id);
-            const getArea = await getAreaByID(user.address.area_id);
-    
-            // Generate token, save it to user, and save the user
-            const token = generateToken(user._id);
-            user.tokens.push({ token });
-            user.isApproved = true;
-            await user.save();
-    
-            // if (process.env.SMS_MODE === 'prod') {
-            //     registrationSuccessSMS(user.mobile, user.name)
-            // }
-    
-            res.status(200).json({
-                status: 200,
-                message: "You have been successfully created a new account",
-                data: {
-                    _id: user._id,
-                    name: user.name,
-                    mobile: user.mobile,
-                    email: user.email,
-                    dob: user.dob,
-                    occupation: user.occupation,
-                    blood_group: user.blood_group,
-                    is_weight_50kg: user.is_weight_50kg,
-                    isAvailable: user.isAvailable,
-                    isActive: user.isActive,
-                    last_donation: user.last_donation,
-                    pic: user.pic,
-                    address: {
-                        division: getDivision.name ?? "",
-                        district: getDistrict.name ?? "",
-                        area: getArea.name ?? "",
-                        post_office: user.address.post_office,
-                    },
-                    access_token: token,
-                },
-    
-            });
-        } else {
-            res.status(400).json({
-                status: 400,
-                message: "Failed to create a new user",
-            });
+        if (!user) {
+            return res.status(400).json({ status: 400, message: "Failed to create a new user" });
         }
 
-    } catch (error) {
-        console.error("Error occurred while storing OTP:", error);
-        res.status(500).json({
-            status: 500,
-            message: "Internal server error",
+        const otpResponse = await storeOTP({ email, otp }, res);
+        return res.status(201).json({
+            status: 201,
+            message: otpResponse.success
+                ? "User registered successfully. Please check your messages for further instructions."
+                : "User registered successfully. If you do not receive a verification code, please try again later.",
         });
+
+    } catch (error) {
+        console.error("Error occurred while registering user:", error);
+        return res.status(500).json({ status: 500, message: "Internal server error" });
     }
 });
 
-const OtpMatchForRegister = asyncHandler(async (req, res) => {
-    // Create a new user with all the provided fields
-    // const user = await Auth.create(requestBody);
 
-    const { mobile, otp } = req.body;
-    const user = await Auth.findOne({ mobile: mobile });
-    const findOtpByMobile = await OtpModel.findOne({ mobile: mobile, otp: otp });
+const resendOTP = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const userExistsWithEmail = await Auth.findOne({ email });
 
-    if (!findOtpByMobile) {
+    if (!userExistsWithEmail) {
         res.status(400).json({
             status: 400,
-            message: "OTP doesn't match!",
-        });
-        return;
-    } 
-
-    // Check if OTP has expired
-    const currentTime = new Date();
-    if (findOtpByMobile.expire_time < currentTime) {
-        res.status(400).json({
-            status: 400,
-            message: "OTP has expired!",
+            message: "User doesn't exist with this email!",
         });
         return;
     }
+    const otp = process.env.SMS_MODE === "prod" ? generateOTP() : process.env.TEST_OTP;
+    try {
+        // const isStoreOTP = await storeOTP({ body: data }, res);
+        const otpResponse = await storeOTP({ email, otp }, res);
+        console.log('otpResponse :>> ', otpResponse);
+        return res.status(201).json({
+            status: 201,
+           message: otpResponse.success
+                ? "User registered successfully. Please check your  messages for further instructions."
+                : "User registered successfully. If you do not receive a verification code, please try again later.",
+        });
+    } catch (error) {
+        console.error("Error occurred while registering user:", error);
+        return res.status(500).json({ status: 500, message: "Internal server error" });
+    }
+})
 
 
-    if (user) {
+const OtpMatchForRegister = asyncHandler(async (req, res) => {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+        return res.status(400).json({
+            status: 400,
+            message: "Email and OTP are required.",
+        });
+    }
 
-        const getDivision = await getDivisionByID(user.address.division_id);
-        const getDistrict = await getDistrictByID(user.address.district_id);
-        const getArea = await getAreaByID(user.address.area_id);
+    try {
+        const user = await Auth.findOne({ email });
+        const findOtp = await OtpModel.findOne({ email, otp });
 
-        // Generate token, save it to user, and save the user
+        if (!findOtp) {
+            return res.status(400).json({
+                status: 400,
+                message: "Invalid OTP. Please enter the correct OTP.",
+            });
+        }
+
+        if (findOtp.expire_time < new Date()) {
+            return res.status(400).json({
+                status: 400,
+                message: "OTP has expired. Please request a new OTP.",
+            });
+        }
+
+        if (!user) {
+            return res.status(400).json({
+                status: 400,
+                message: "User not found. Please register first.",
+            });
+        }
+
+        // Fetch division, district, and area details
+        const [division, district, area] = await Promise.all([
+            getDivisionByID(user.address.division_id),
+            getDistrictByID(user.address.district_id),
+            getAreaByID(user.address.area_id),
+        ]);
+
+        // Generate authentication token
         const token = generateToken(user._id);
         user.tokens.push({ token });
         user.isApproved = true;
+        findOtp.is_verified = true;
         await user.save();
+        await findOtp.save();
 
-        if (process.env.SMS_MODE === 'prod') {
-            registrationSuccessSMS(user.mobile, user.name)
+        // Send success SMS in production mode
+        if (process.env.SMS_MODE === "prod") {
+            // registrationSuccessSMS(user.email, user.name);
+            generateRegistrationSuccessMessage(user);
         }
 
         res.status(200).json({
             status: 200,
-            message: "You have been successfully created a new account",
+            message: "Account successfully created.",
             data: {
                 _id: user._id,
                 name: user.name,
@@ -273,27 +173,31 @@ const OtpMatchForRegister = asyncHandler(async (req, res) => {
                 last_donation: user.last_donation,
                 pic: user.pic,
                 address: {
-                    division: getDivision.name ?? "",
-                    district: getDistrict.name ?? "",
-                    area: getArea.name ?? "",
+                    division: division?.name || "",
+                    district: district?.name || "",
+                    area: area?.name || "",
                     post_office: user.address.post_office,
                 },
                 access_token: token,
             },
-
         });
-    } else {
-        res.status(400).json({
-            status: 400,
-            message: "Failed to create a new user",
+    } catch (error) {
+        res.status(500).json({
+            status: 500,
+            message: "An unexpected error occurred. Please try again later.",
         });
     }
-})
+});
+
 
 const authUser = asyncHandler(async (req, res) => {
-    const { mobile, password } = req.body;
+    const { username, password } = req.body;
 
-    const user = await Auth.findOne({ mobile, isApproved: true });
+    const user = await Auth.findOne({
+        $or: [{ email: username }, { mobile: username }],
+        isApproved: true
+    });
+    // const user = await Auth.findOne({ email, isApproved: true });
 
     if (user && (await user.matchPassword(password))) {
 
@@ -332,7 +236,7 @@ const authUser = asyncHandler(async (req, res) => {
         });
     } else {
         res.status(400);
-        throw new Error("Mobile or Password do not match!");
+        throw new Error("Invalid credentials. Please check your login details and try again.");
     }
 })
 
@@ -651,4 +555,4 @@ async function dropEmailUniqueIndex() {
     }
 }
 
-module.exports = { registerUser, OtpMatchForRegister, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp }
+module.exports = { registerUser, OtpMatchForRegister, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp, resendOTP }
