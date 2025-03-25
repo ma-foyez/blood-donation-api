@@ -17,7 +17,7 @@ const AuthSchema = mongoose.Schema(
     {
         name: { type: String, required: true },
         mobile: { type: String, required: true, unique: true },
-        email: { type: String, required: false, default: "" },
+        email: { type: String, required: true },
         dob: { type: Date, required: true },
         blood_group: { type: String, required: true },
         occupation: { type: String, default: "" },

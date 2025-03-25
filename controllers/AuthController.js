@@ -47,9 +47,6 @@ const registerUser = asyncHandler(async (req, res) => {
         email && Auth.findOneAndDelete({ email, isApproved: false }),
     ]);
 
-    // Generate OTP
-    const otp = process.env.SMS_MODE === "prod" ? generateOTP() : process.env.TEST_OTP;
-
     try {
         const user = await Auth.create({ name, mobile, email, dob, blood_group, is_weight_50kg, address, password });
 
@@ -57,7 +54,8 @@ const registerUser = asyncHandler(async (req, res) => {
             return res.status(400).json({ status: 400, message: "Failed to create a new user" });
         }
 
-        const otpResponse = await storeOTP({ email, otp }, res);
+        const otpResponse = await storeOTP({ email }, res);
+
         return res.status(201).json({
             status: 201,
             message: otpResponse.success
@@ -71,34 +69,31 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 });
 
-
 const resendOTP = asyncHandler(async (req, res) => {
     const { email } = req.body;
     const userExistsWithEmail = await Auth.findOne({ email });
 
     if (!userExistsWithEmail) {
-        res.status(400).json({
+        return res.status(400).json({
             status: 400,
             message: "User doesn't exist with this email!",
         });
-        return;
     }
-    const otp = process.env.SMS_MODE === "prod" ? generateOTP() : process.env.TEST_OTP;
+
     try {
-        // const isStoreOTP = await storeOTP({ body: data }, res);
-        const otpResponse = await storeOTP({ email, otp }, res);
-        console.log('otpResponse :>> ', otpResponse);
+        // const otpResponse = await storeOTP(email, res);
+        const otpResponse = await storeOTP({ email }, res);
         return res.status(201).json({
             status: 201,
-           message: otpResponse.success
-                ? "User registered successfully. Please check your  messages for further instructions."
-                : "User registered successfully. If you do not receive a verification code, please try again later.",
+            message: otpResponse.success
+                ? "OTP resent successfully. Please check your messages."
+                : "Failed to resend OTP. Please try again later.",
         });
     } catch (error) {
-        console.error("Error occurred while registering user:", error);
+        console.error("Error occurred while resending OTP:", error);
         return res.status(500).json({ status: 500, message: "Internal server error" });
     }
-})
+});
 
 
 const OtpMatchForRegister = asyncHandler(async (req, res) => {
@@ -451,77 +446,97 @@ const getProfileData = asyncHandler(async (req, res) => {
     }
 });
 
-const requestPasswordReset = asyncHandler(async (req, res) => {
-    const { mobile } = req.body;
-    const userExistsWithNumber = await Auth.findOne({ mobile: mobile });
+// const requestPasswordReset = asyncHandler(async (req, res) => {
+//     const { mobile } = req.body;
+//     const userExistsWithNumber = await Auth.findOne({ mobile: mobile });
 
-    if (!userExistsWithNumber) {
-        res.status(400).json({
-            status: 400,
-            message: "User doesn't exits with this number!",
-        });
-        return;
-    }
+//     if (!userExistsWithNumber) {
+//         res.status(400).json({
+//             status: 400,
+//             message: "User doesn't exits with this number!",
+//         });
+//         return;
+//     }
 
-    // If user exists with the provided mobile number, call the storeOTP method
-    const otp = generateOTP();
-    // const data = {
-    //     mobile, otp
-    // }
-    const data = { mobile: mobile, otp: process.env.SMS_MODE === 'prod' ? otp : process.env.TEST_OTP };
+//     // If user exists with the provided mobile number, call the storeOTP method
+//     const otp = generateOTP();
+//     // const data = {
+//     //     mobile, otp
+//     // }
+//     const data = { mobile: mobile, otp: process.env.SMS_MODE === 'prod' ? otp : process.env.TEST_OTP };
 
 
-    try {
-        const isStoreOTP = await storeOTP(data, res);
-        // If OTP is successfully stored and the response status is 200, send SMS
-        if (process.env.SMS_MODE === 'prod' && isStoreOTP.status(200)) {
-            passwordResetOtpSMS(mobile, otp);
-        }
-    } catch (error) {
-        console.error("Error occurred while storing OTP:", error);
-        res.status(500).json({
-            status: 500,
-            message: "Internal server error",
-        });
-    }
+//     try {
+//         const isStoreOTP = await storeOTP(data, res);
+//         // If OTP is successfully stored and the response status is 200, send SMS
+//         if (process.env.SMS_MODE === 'prod' && isStoreOTP.status(200)) {
+//             passwordResetOtpSMS(mobile, otp);
+//         }
+//     } catch (error) {
+//         console.error("Error occurred while storing OTP:", error);
+//         res.status(500).json({
+//             status: 500,
+//             message: "Internal server error",
+//         });
+//     }
 
-})
+// })
 
 const changePasswordByMatchingOtp = asyncHandler(async (req, res) => {
-    const { mobile, password } = req.body;
-    const userExistsWithNumber = await Auth.findOne({ mobile: mobile });
-    // const findOtpByMobile = await OtpModel.findOne({ mobile: mobile, otp: otp });
+    const { email, password } = req.body;
 
-    // If OTP is valid and not expired, update the password
-    if (userExistsWithNumber) {
-        try {
-            // Generate salt and hash the new password
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
-
-            // Update the password in the database
-            await Auth.updateOne({ mobile }, { password: hashedPassword });
-
-            // Respond with success message
-            res.status(200).json({
-                status: 200,
-                message: "Password changed successfully!",
-            });
-        } catch (error) {
-            console.error('Error changing password:', error.message);
-            res.status(500).json({
-                status: 500,
-                message: "Internal server error",
-            });
-        }
-    } else {
-        res.status(400).json({
+    // Validate required fields
+    if (!email || !password) {
+        return res.status(400).json({
             status: 400,
-            message: "User not found!",
+            message: "Email and new password are required.",
         });
     }
 
-})
+    try {
+        // Fetch user and OTP details in parallel
+        const [existingUser, existingOTP] = await Promise.all([
+            Auth.findOne({ email }),
+            OtpModel.findOne({ email }),
+        ]);
+
+        // Check if user exists
+        if (!existingUser) {
+            return res.status(404).json({
+                status: 404,
+                message: "No account found with this email.",
+            });
+        }
+
+        // Check if OTP exists and is verified
+        if (!existingOTP || existingOTP.is_verified === false) {
+            return res.status(400).json({
+                status: 400,
+                message: "Invalid or unverified OTP. Please verify your OTP before changing the password.",
+            });
+        }
+
+        // Hash the new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Update the password in the database
+        await Auth.updateOne({ email }, { password: hashedPassword });
+
+        // Respond with success message
+        return res.status(200).json({
+            status: 200,
+            message: "Your password has been updated successfully.",
+        });
+
+    } catch (error) {
+        console.error("Error changing password:", error);
+        return res.status(500).json({
+            status: 500,
+            message: "An unexpected error occurred. Please try again later.",
+        });
+    }
+});
 
 // Do not need to apply anymore
 async function removeDuplicateEmptyEmails() {
@@ -555,4 +570,6 @@ async function dropEmailUniqueIndex() {
     }
 }
 
-module.exports = { registerUser, OtpMatchForRegister, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp, resendOTP }
+
+
+module.exports = { registerUser, OtpMatchForRegister, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, changePasswordByMatchingOtp, resendOTP }

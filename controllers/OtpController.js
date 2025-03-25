@@ -5,13 +5,14 @@ const Auth = require("../models/AuthModal");
 const {
   sendEmail,
   regenerateRegisterOTPMessage,
+  generateResetPasswordOTPMessage,
 } = require("../_utils/_helper/emailService"); // Replace SMS service with email service
 const maskEmail = require("../_utils/_helper/maskEmail");
 const { keys } = require("../_utils/keys");
 const { generateOTP } = require("../_utils/_helper/OtpGenerate");
 
 const storeOTP = asyncHandler(async (req, res) => {
-  const { email, otp } = req;
+  const { email } = req;
   if (!email) {
     res.status(400).json({
       status: 400,
@@ -20,14 +21,10 @@ const storeOTP = asyncHandler(async (req, res) => {
     return;
   }
 
-  const userExistsWithEmail = await Auth.findOne({ email });
   const existingOTP = await OtpModel.findOne({ email });
-
+  const existingUser = await Auth.findOne({ email });
   if (existingOTP && existingOTP.expire_time > new Date() && existingOTP.is_verified === false) {
-    // Calculate the remaining time until OTP expiration
-    const remainingTime = Math.ceil(
-      (existingOTP.expire_time - new Date()) / (1000 * 60)
-    );
+    const remainingTime = Math.ceil((existingOTP.expire_time - new Date()) / (1000 * 60));
     res.status(400).json({
       status: 400,
       message: `An OTP has already been sent to your email. Please try again after ${remainingTime} minutes.`,
@@ -35,51 +32,36 @@ const storeOTP = asyncHandler(async (req, res) => {
     return;
   }
 
-  // Set expiration time to 5 minutes from now
+  const otp = process.env.SMS_MODE === "prod" ? generateOTP() : process.env.TEST_OTP;
   const expireTime = new Date();
   expireTime.setMinutes(expireTime.getMinutes() + keys.OTP_VALIDITY_DURATION_MINUTES);
 
-  const storeData = {
-    email,
-    otp,
-    is_verified: false,
-    expire_time: expireTime,
-  };
+  const storeData = { email, otp, is_verified: false, expire_time: expireTime };
 
   try {
-    // const otpStored = await OtpModel.create(storeData);
-    let otpStored
-
+    let otpStored;
     if (existingOTP) {
-      // If OTP exists (expired or not), update it instead of creating a new one
-      otpStored = await OtpModel.findOneAndUpdate({ email }, storeData, { new: true },)
+      otpStored = await OtpModel.findOneAndUpdate({ email }, storeData, { new: true });
     } else {
-      // If no OTP exists for this email, create a new one
-      otpStored = await OtpModel.create(storeData)
+      otpStored = await OtpModel.create(storeData);
     }
+
     if (otpStored) {
-      // if (userExistsWithEmail && userExistsWithEmail.isApproved) {
-      //   generateResetPasswordOTPMessage(otpStored.email, otpStored.otp);
-      // } else {
-      //   regenerateRegisterOTPMessage(otpStored.email, otpStored.otp);
-      // }
-       generateResetPasswordOTPMessage(otpStored.email, otpStored.otp);
+      if (existingUser.isApproved === true) {
+        generateResetPasswordOTPMessage(otpStored.email, otpStored.otp);
+      } else {
+        regenerateRegisterOTPMessage(otpStored.email, otpStored.otp);
+      }
       res.status(200).json({
         status: 200,
         expire_time: otpStored.expire_time,
         message: `An OTP has been sent to ${maskEmail(email)}`,
       });
     } else {
-      res.status(400).json({
-        status: 400,
-        message: "Failed to send OTP",
-      });
+      res.status(400).json({ status: 400, message: "Failed to send OTP" });
     }
   } catch (error) {
-    res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
+    res.status(500).json({ status: 500, message: "Internal server error" });
   }
 });
 
@@ -120,44 +102,73 @@ const storeOTP = asyncHandler(async (req, res) => {
 //   }
 // });
 
-const matchOtp = asyncHandler(async (req, res) => {
+const verifyOtp = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
-  const findOtpByEmail = await OtpModel.findOne({ email, otp });
 
-  if (!findOtpByEmail) {
+  // Validate required fields
+  if (!email || !otp) {
     return res.status(400).json({
       status: 400,
-      message: "OTP doesn't match!",
+      message: "Email and OTP are required.",
     });
   }
 
-  const currentTime = new Date();
-  if (
-    process.env.SMS_MODE === "prod" &&
-    findOtpByEmail.expire_time < currentTime
-  ) {
-    return res.status(400).json({
-      status: 400,
-      message: "OTP has expired!",
-    });
-  } else {
-    const similarOtps = await OtpModel.find({ otp });
-    const validOtps = similarOtps.filter(
-      (otp) => otp.expire_time > currentTime
-    );
+  try {
+    // Fetch user and OTP details in parallel
+    const [user, findOtp] = await Promise.all([
+      Auth.findOne({ email }),
+      OtpModel.findOne({ email, otp }),
+    ]);
 
-    if (validOtps.length === 0) {
-      return res.status(400).json({
-        status: 400,
-        message: "OTP has expired!",
+    // Check if the user exists
+    if (!user) {
+      return res.status(404).json({
+        status: 404,
+        message: "User not found. Please register first.",
       });
     }
-  }
 
-  return res.status(200).json({
-    status: 200,
-    message: "OTP verified successfully!",
-  });
+    // Check if OTP exists
+    if (!findOtp) {
+      return res.status(400).json({
+        status: 400,
+        message: "Invalid OTP. Please enter the correct OTP.",
+      });
+    }
+    // Check if OTP is already used
+    if (findOtp.is_verified) {
+      return res.status(400).json({
+        status: 400,
+        message: "This OTP has already been used. Please request a new one.",
+      });
+    }
+
+
+    // Check if OTP is expired
+    if (findOtp.expire_time < new Date()) {
+      return res.status(400).json({
+        status: 400,
+        message: "OTP has expired. Please request a new one.",
+      });
+    }
+
+    // Mark OTP as verified (if applicable in your logic)
+    await OtpModel.updateOne({ email }, { is_verified: true });
+
+    return res.status(200).json({
+      status: 200,
+      message: "OTP verified successfully.",
+      data: null
+    });
+
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    return res.status(500).json({
+      status: 500,
+      message: "An unexpected error occurred. Please try again later.",
+    });
+  }
 });
 
-module.exports = { storeOTP, matchOtp };
+
+module.exports = { storeOTP, verifyOtp };
