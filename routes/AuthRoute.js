@@ -1,7 +1,7 @@
 const express = require("express");
-const { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, requestPasswordReset, changePasswordByMatchingOtp, OtpMatchForRegister, resendOTP } = require("../controllers/AuthController");
+const { registerUser, authUser, logout, updateUserProfile, updateProfileActive, getProfileData, changePasswordByMatchingOtp, OtpMatchForRegister, resendOTP } = require("../controllers/AuthController");
 const { authenticateToken } = require("../config/generateToken");
-const { matchOtp } = require("../controllers/OtpController");
+const { verifyOtp } = require("../controllers/OtpController");
 const AuthRouter = express.Router();
 
 AuthRouter.route('/').post(registerUser)
@@ -12,11 +12,11 @@ AuthRouter.post("/logout", authenticateToken, logout);
 AuthRouter.put("/profile-update", authenticateToken, updateUserProfile);
 AuthRouter.put("/profile-activation", authenticateToken, updateProfileActive);
 AuthRouter.get("/profile", authenticateToken, getProfileData);
-AuthRouter.post("/password-reset-request", requestPasswordReset);
+AuthRouter.post("/password-reset-request", resendOTP);
 AuthRouter.post("/password-reset", changePasswordByMatchingOtp);
 AuthRouter.post("/register-otp-match", OtpMatchForRegister);
 AuthRouter.post("/resent-otp", resendOTP);
-AuthRouter.post("/otp-match", OtpMatchForRegister);
+AuthRouter.post("/otp-match", verifyOtp);
 
 
 module.exports = AuthRouter;
